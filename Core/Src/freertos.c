@@ -61,6 +61,13 @@ const osThreadAttr_t dxlTask_attributes = {
   .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityHigh7,
 };
+/* Definitions for mrsTask */
+osThreadId_t mrsTaskHandle;
+const osThreadAttr_t mrsTask_attributes = {
+  .name = "mrsTask",
+  .stack_size = 1024 * 4,
+  .priority = (osPriority_t) osPriorityHigh5,
+};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -69,6 +76,7 @@ const osThreadAttr_t dxlTask_attributes = {
 
 void StartDefaultTask(void *argument);
 void DxlTask(void *argument);
+void MrsTask(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -104,6 +112,9 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of dxlTask */
   dxlTaskHandle = osThreadNew(DxlTask, NULL, &dxlTask_attributes);
+
+  /* creation of mrsTask */
+  mrsTaskHandle = osThreadNew(MrsTask, NULL, &mrsTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -149,6 +160,24 @@ __weak void DxlTask(void *argument)
     osDelay(1);
   }
   /* USER CODE END DxlTask */
+}
+
+/* USER CODE BEGIN Header_MrsTask */
+/**
+* @brief Function implementing the mrsTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_MrsTask */
+__weak void MrsTask(void *argument)
+{
+  /* USER CODE BEGIN MrsTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END MrsTask */
 }
 
 /* Private application code --------------------------------------------------*/
