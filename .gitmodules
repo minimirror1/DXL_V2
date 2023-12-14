@@ -7,3 +7,6 @@
 [submodule "Component/cpp_tick"]
 	path = Component/cpp_tick
 	url = git@github.com:minimirror1/cpp_tick.git
+[submodule "Component/GM_MOTION"]
+	path = Component/GM_MOTION
+	url = git@github.com:KimJunHyung1991/GM_MOTION.git
