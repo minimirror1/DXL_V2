@@ -25,7 +25,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "dxl_task.h"
+#include "mrs_task.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -68,6 +69,16 @@ const osThreadAttr_t mrsTask_attributes = {
   .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityHigh5,
 };
+/* Definitions for txQueue */
+osMessageQueueId_t txQueueHandle;
+const osMessageQueueAttr_t txQueue_attributes = {
+  .name = "txQueue"
+};
+/* Definitions for rxQueue */
+osMessageQueueId_t rxQueueHandle;
+const osMessageQueueAttr_t rxQueue_attributes = {
+  .name = "rxQueue"
+};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -101,6 +112,13 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN RTOS_TIMERS */
   /* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
+
+  /* Create the queue(s) */
+  /* creation of txQueue */
+  txQueueHandle = osMessageQueueNew (60, sizeof(BypassPacket_TypeDef), &txQueue_attributes);
+
+  /* creation of rxQueue */
+  rxQueueHandle = osMessageQueueNew (60, sizeof(BypassPacket_TypeDef), &rxQueue_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
