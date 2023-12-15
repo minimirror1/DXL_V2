@@ -24,6 +24,8 @@
 extern osMessageQueueId_t txQueueHandle;
 extern osMessageQueueId_t rxQueueHandle;
 
+extern can_q_buff_t can_rx_ring_buff[CAN_CNT];
+
 uint8_t my_gid = 0;
 
 void mrs_tx_Bypass(BypassPacket_TypeDef *cmd_tx);
@@ -57,6 +59,9 @@ void MrsTask(void *argument)
 	set_my_can_id(my_gid);
 	add_my_can_sub_id(1, 30);
 
+	osDelay(3000);
+	can_rx_ring_buff[0].head = 0;
+	can_rx_ring_buff[0].tail = 0;
 	app_tx_init_sub_pid_boot_ctl(
 			0,
 			0,

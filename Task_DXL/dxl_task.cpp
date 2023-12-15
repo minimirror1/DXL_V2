@@ -86,8 +86,8 @@ void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx) {
 	case MRS_RX_DATA1: {
 		prtc_data_ctl_init_driver_data1_t *pData = (prtc_data_ctl_init_driver_data1_t*) cmd_rx->data;
 
-		if(dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) == Motor::Status_PreRun
-				||dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) == Motor::Status_SettingInfo){
+		//if(dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) == Motor::Status_PreRun
+		//		||dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) == Motor::Status_SettingInfo){
 
 			dxlManager.setSettingInfo(
 					cmd_rx->gid,
@@ -104,7 +104,7 @@ void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx) {
 			msg.cmd = MRS_TX_DATA1_ACK;
 			memcpy(msg.data, (uint8_t *)pData, 8);
 			osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
-		}
+		//}
 		break;
 	}
 
@@ -154,6 +154,12 @@ void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx) {
 		osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
 		break;
 	}
+
+	case MRS_RX_MOTION : {
+		prtc_data_ctl_motion_adc_t *pData = (prtc_data_ctl_motion_adc_t*) cmd_rx->data;
+		dxlManager.setPosition(cmd_rx->sid, pData->adc_val);
+
+	}
 	default:
 		break;
 
@@ -167,11 +173,11 @@ void DXL_Manager_Init(void){
 	uint8_t gID = readGroupID();
 
 	for(int i = 1; i <= 10; i++)
-		dxlManager.addDXLObject(gID, i, Motor::Robotis_Type, &serial3);
+		dxlManager.addDXLObject(gID, i, Motor::Robotis_Type, &serial1);
 	for(int i = 11; i <= 20; i++)
 		dxlManager.addDXLObject(gID, i, Motor::Robotis_Type, &serial2);
 	for(int i = 21; i <= 30; i++)
-		dxlManager.addDXLObject(gID, i, Motor::Robotis_Type, &serial1);
+		dxlManager.addDXLObject(gID, i, Motor::Robotis_Type, &serial3);
 }
 
 void Serial_Init(void){
