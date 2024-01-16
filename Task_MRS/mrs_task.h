@@ -29,7 +29,8 @@ typedef enum _RxBypassCmd_TypeDef{
 	MRS_RX_DATA_OP,
 	MRS_RX_MOVE_DEFAULT_POSI,
 	MRS_RX_MOVE_DEFAULT_POSI_CHECK,
-	MRS_RX_MOTION
+	MRS_RX_MOTION,
+	MRS_RX_JOG_MOVE
 }RxBypassCmd_TypeDef;
 
 typedef struct _BypassPacket_TypeDef{

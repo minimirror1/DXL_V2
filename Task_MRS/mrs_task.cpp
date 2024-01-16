@@ -172,6 +172,27 @@ void app_rx_motion_sub_pid_adc_ctl(uint8_t num, prtc_header_t *pPh, prtc_data_ct
 	osMessageQueuePut(rxQueueHandle, &bypassRx, 0U, 0U);
 }
 
+/* jog move */
+void app_rx_motion_sub_pid_direction_ctl(uint8_t num, prtc_header_t *pPh, prtc_data_ctl_motion_direction_t *pData)
+{
+	uint8_t axleId = (uint8_t)pPh->target_sub_id;
+	axleId -= 1;
+	if (32 < axleId) return;
+
+	BypassPacket_TypeDef bypassRx;
+
+	bypassRx.gid = pPh->target_id;
+	bypassRx.sid = pPh->target_sub_id;
+	bypassRx.cmd = MRS_RX_JOG_MOVE;
+	memcpy(
+		bypassRx.data,
+		pData,
+		sizeof(*pData)
+	);
+	osMessageQueuePut(rxQueueHandle, &bypassRx, 0U, 0U);
+}
+
+
 /* init sequnce */
 void app_rx_init_sub_pid_driver_data1_ctl(uint8_t num, prtc_header_t *pPh, prtc_data_ctl_init_driver_data1_t *pData)
 {
