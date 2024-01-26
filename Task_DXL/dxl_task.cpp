@@ -61,10 +61,14 @@ void DxlTask(void *argument)
 	for (;;) {
 		osDelay(1);
 
-		osStatus_t status = osMessageQueueGet(rxQueueHandle, &rx_bypass, NULL, 0U); // wait for message
-		if (status == osOK) {
-			mrs_rx_bypass(&rx_bypass);
-		}
+		/* os queue의 모든 메시지를 꺼냄*/
+		osStatus_t status = osStatusReserved;
+	    do {
+	    	status = osMessageQueueGet(rxQueueHandle, &rx_bypass, NULL, 0U); // wait for message
+	        if (status == osOK) {
+	        	mrs_rx_bypass(&rx_bypass);
+			}
+	    } while (status == osOK); // 큐가 비어있지 않는 동안 계속 반복
 
 		dxlManager.allMotorProcess();
 
