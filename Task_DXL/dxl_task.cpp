@@ -68,6 +68,8 @@ void DxlTask(void *argument)
 
 		dxlManager.allMotorProcess();
 
+		//dxlManager.allTimeCheckPosi();
+
 		serial1.rxLed_Check();
 		serial2.rxLed_Check();
 		serial3.rxLed_Check();
@@ -81,6 +83,10 @@ void DxlTask(void *argument)
 
 
 void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx) {
+
+	//240119 init error -> 응답 하지 않음
+	if(dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) == Motor::Status_InitError)
+		return;
 
 	switch (cmd_rx->cmd) {
 	case MRS_RX_DATA1: {
@@ -121,6 +127,15 @@ void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx) {
 					0
 					);
 
+			BypassPacket_TypeDef msg;
+			msg.gid = cmd_rx->gid;
+			msg.sid = cmd_rx->sid;
+			msg.cmd = MRS_TX_DATA_OP_ACK;
+			memcpy(msg.data, (uint8_t *)pData, 8);
+			osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+		}
+		//240119 재전송시 응답만
+		else if(dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) == Motor::Statis_SettingOk){
 			BypassPacket_TypeDef msg;
 			msg.gid = cmd_rx->gid;
 			msg.sid = cmd_rx->sid;
