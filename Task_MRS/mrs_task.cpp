@@ -170,6 +170,7 @@ void app_rx_motion_sub_pid_adc_ctl(uint8_t num, prtc_header_t *pPh, prtc_data_ct
 	    sizeof(*pData)
 	);
 	osMessageQueuePut(rxQueueHandle, &bypassRx, 0U, 0U);
+	osDelay(1);
 }
 
 /* jog move */
