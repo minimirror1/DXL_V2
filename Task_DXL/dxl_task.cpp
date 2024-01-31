@@ -177,7 +177,7 @@ void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx) {
 	case MRS_RX_MOTION : {
 		prtc_data_ctl_motion_adc_t *pData = (prtc_data_ctl_motion_adc_t*) cmd_rx->data;
 		dxlManager.setPosition(cmd_rx->sid, pData->adc_val);
-
+		break;
 	}
 	case MRS_RX_JOG_MOVE : {
 		prtc_data_ctl_motion_direction_t *pData = (prtc_data_ctl_motion_direction_t*) cmd_rx->data;
@@ -187,6 +187,7 @@ void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx) {
 		{
 			dxlManager.setJogMove(cmd_rx->sid, pData->val);
 		}
+		break;
 	}
 	default:
 		break;
