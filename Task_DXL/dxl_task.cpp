@@ -150,16 +150,16 @@ void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx) {
 		break;
 	}
 	case MRS_RX_MOVE_DEFAULT_POSI: {
-		if(dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) == Motor::Statis_SettingOk){
+		if(dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) == Motor::Statis_SettingOk
+				|| dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) == Motor::Status_Run){ // 241105 Run 상태에서 다시 초기위치 이동을 위하여 추가
 			dxlManager.setDefaultPosi_Ready(cmd_rx->gid, cmd_rx->sid);
 		}
 		break;
 	}
 
 	case MRS_RX_MOVE_DEFAULT_POSI_CHECK: {
-
-		if(dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) == Motor::Statis_SettingOk
-			|| dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) == Motor::Status_Run){ // 241105 Run 상태에서 다시 초기위치 이동을 위하여 추가
+		// MRS_RX_MOVE_DEFAULT_POSI 를 수신 받지 못했을 경우 초기위치 설정
+		if(dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) == Motor::Statis_SettingOk){
 			dxlManager.setDefaultPosi_Ready(cmd_rx->gid, cmd_rx->sid);
 		}
 
