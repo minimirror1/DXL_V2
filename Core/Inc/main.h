@@ -83,7 +83,19 @@ void Error_Handler(void);
 #define LD4_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
+/* Version */
+// 0.0.1 : 231215 최초작성
+// 0.0.2 : 240116 버전읽기 jog 기능 추가
+// 0.0.3 : 240116 dxl 통신 속도 1Mbps 변경
+// 0.0.4 : 240127 queue 최적화
+// 0.0.5 : 반응속도 증가 FreeRTOS 수신Queue 모두 비움
+// 0.0.6 : 동작중 초기위치 이동 동작
 
+#define VERSION_MAJOR 0
+#define VERSION_MINOR 0
+#define VERSION_PATCH 6
+
+/* Master CAN ID */
 #define MASTER_CAN_ID 0
 
 /*----------------------------------------------------------------------------*/
