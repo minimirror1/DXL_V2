@@ -1,4 +1,10 @@
 # DXL-DYNAMIXEL 보드 펌웨어
+## 소개
+
+DXL-DYNAMIXEL 보드 펌웨어는 STM32F446RET 마이크로컨트롤러를 사용하여 작성되었습니다.
+
+[GM_MOTION Protocol](https://github.com/KimJunHyung1991/GM_MOTION)과 호환되는 펌웨어입니다.
+
 
 ## 목차
 
