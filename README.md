@@ -1,7 +1,7 @@
 # DXL-DYNAMIXEL 보드 펌웨어
 
-![GNU Toolchain](https://img.shields.io/badge/GNU%20ToolForStm32-11.3rel1-brightred)
-![GNU Toolchain](https://img.shields.io/badge/GNU%20ToolForStm32-12.3rel1-brightgreen)
+![GNU Toolchain](https://img.shields.io/badge/fail-red?style=flat&label=GNU%20Tools%20for%20STM32%20(11.3rel1))
+![GNU Toolchain](https://img.shields.io/badge/pass-green?style=flat&label=GNU%20Tools%20for%20STM32%20(12.3rel1))
 
 ## 소개
 
