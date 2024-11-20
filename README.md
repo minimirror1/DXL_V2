@@ -1,4 +1,8 @@
 # DXL-DYNAMIXEL 보드 펌웨어
+
+![GNU Toolchain](https://img.shields.io/badge/GNU%20ToolForStm32-11.3rel1-brightred)
+![GNU Toolchain](https://img.shields.io/badge/GNU%20ToolForStm32-12.3rel1-brightgreen)
+
 ## 소개
 
 DXL-DYNAMIXEL 보드 펌웨어는 STM32F446RET 마이크로컨트롤러를 사용하여 작성되었습니다.
