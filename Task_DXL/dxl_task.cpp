@@ -43,8 +43,8 @@ void Serial_Init(void);
 static uint8_t readGroupID(void);
 void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx);
 
-Tick t_rxLastRxMotion;
-uint8_t errorCheckID = 1;  // 1부터 시작
+// 모터별 마지막 모션 수신 타이머 배열 (모터 ID 1~10)
+Tick t_rxLastRxMotion[11];
 
 // 에러 전송 카운터 배열 [모터ID][에러비트] - 각 에러별로 3번까지만 전송
 uint8_t errorSendCount[11][8] = {0};  // 모터ID 0~10, 에러비트 0~7
@@ -63,156 +63,144 @@ uint8_t getErrorBitIndex(uint8_t errorBit) {
     }
 }
 
-// 다음 연결된 모터 ID를 찾는 함수
-uint8_t findNextConnectedMotor(uint8_t currentID) {
-	uint8_t nextID = currentID;
+// 개별 모터의 하드웨어 에러 체크 및 전송 처리
+void checkMotorHardwareError(uint8_t motorID) {
 	uint8_t gID = readGroupID();
+	Motor::Status status = dxlManager.getStatus(gID, motorID);
 	
-	// 최대 10번까지 순환하면서 연결된 모터 찾기
-	for(uint8_t i = 0; i < 10; i++) {
-		nextID++;
-		if(nextID > 10) nextID = 1;  // 1~10 범위에서 순환
+	// 연결되어 있고 Status_Run 상태인 모터만 체크
+	if(status != Motor::Status_None && status != Motor::Status_InitError && status == Motor::Status_Run) {
+		uint8_t errorStatus = dxlManager.getHardwareErrorStatus(motorID);
 		
-		Motor::Status status = dxlManager.getStatus(gID, nextID);
-		// 연결된 모터인지 확인 (Status_None이나 InitError가 아니면 연결됨)
-		if(status != Motor::Status_None && status != Motor::Status_InitError) {
-			return nextID;
+		// 에러가 해결된 경우 카운터 리셋
+		if(errorStatus == 0) {
+			for(int i = 0; i < 8; i++) {
+				errorSendCount[motorID][i] = 0;
+			}
 		}
-	}
-	return currentID;  // 연결된 모터가 없으면 현재 ID 유지
-}
-
-void allHardwareErrorCheck(void){
-	if(t_rxLastRxMotion.tickCheck(100)){
-		uint8_t gID = readGroupID();
-		Motor::Status status = dxlManager.getStatus(gID, errorCheckID);
-		
-		// 현재 모터가 연결되어 있는지 확인
-		if(status != Motor::Status_None && status != Motor::Status_InitError) {
-			// Status_Run인 경우만 하드웨어 에러 체크
-			if(status == Motor::Status_Run) {
-				uint8_t errorStatus = dxlManager.getHardwareErrorStatus(errorCheckID);
-				
-				// 에러가 해결된 경우 카운터 리셋
-				if(errorStatus == 0) {
-					for(int i = 0; i < 8; i++) {
-						errorSendCount[errorCheckID][i] = 0;
-					}
+		else {
+			// 하드웨어 에러 비트별 분류 처리 - 3번까지만 전송
+			// Bit 0: Input Voltage Error
+			if(errorStatus & 0x01) {
+				uint8_t bitIndex = getErrorBitIndex(0x01);
+				if(errorSendCount[motorID][bitIndex] < 3) {
+					BypassPacket_TypeDef msg = {0,};
+					msg.gid = gID;
+					msg.sid = motorID;
+					msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
+					strcpy((char*)msg.data, "VOLT");
+					osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+					errorSendCount[motorID][bitIndex]++;
 				}
-				else {
-					// 하드웨어 에러 비트별 분류 처리 - 3번까지만 전송
-					// Bit 0: Input Voltage Error
-					if(errorStatus & 0x01) {
-						uint8_t bitIndex = getErrorBitIndex(0x01);
-						if(errorSendCount[errorCheckID][bitIndex] < 3) {
-							BypassPacket_TypeDef msg = {0,};
-							msg.gid = gID;
-							msg.sid = errorCheckID;
-							msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
-							strcpy((char*)msg.data, "VOLT");
-							osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
-							errorSendCount[errorCheckID][bitIndex]++;
-						}
-					}
-					
-					// Bit 2: Overheating Error
-					if(errorStatus & 0x04) {
-						uint8_t bitIndex = getErrorBitIndex(0x04);
-						if(errorSendCount[errorCheckID][bitIndex] < 3) {
-							BypassPacket_TypeDef msg = {0,};
-							msg.gid = gID;
-							msg.sid = errorCheckID;
-							msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
-							strcpy((char*)msg.data, "HEAT");
-							osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
-							errorSendCount[errorCheckID][bitIndex]++;
-						}
-					}
-					
-					// Bit 3: Motor Encoder Error
-					if(errorStatus & 0x08) {
-						uint8_t bitIndex = getErrorBitIndex(0x08);
-						if(errorSendCount[errorCheckID][bitIndex] < 3) {
-							BypassPacket_TypeDef msg = {0,};
-							msg.gid = gID;
-							msg.sid = errorCheckID;
-							msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
-							strcpy((char*)msg.data, "ENCR");
-							osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
-							errorSendCount[errorCheckID][bitIndex]++;
-						}
-					}
-					
-					// Bit 4: Electrical Shock Error
-					if(errorStatus & 0x10) {
-						uint8_t bitIndex = getErrorBitIndex(0x10);
-						if(errorSendCount[errorCheckID][bitIndex] < 3) {
-							BypassPacket_TypeDef msg = {0,};
-							msg.gid = gID;
-							msg.sid = errorCheckID;
-							msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
-							strcpy((char*)msg.data, "SHCK");
-							osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
-							errorSendCount[errorCheckID][bitIndex]++;
-						}
-					}
-					
-					// Bit 5: Overload Error
-					if(errorStatus & 0x20) {
-						uint8_t bitIndex = getErrorBitIndex(0x20);
-						if(errorSendCount[errorCheckID][bitIndex] < 3) {
-							BypassPacket_TypeDef msg = {0,};
-							msg.gid = gID;
-							msg.sid = errorCheckID;
-							msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
-							strcpy((char*)msg.data, "LOAD");
-							osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
-							errorSendCount[errorCheckID][bitIndex]++;
-						}
-					}
-					
-					// Bit 6: Communication Failure
-					if(errorStatus & 0x40) {
-						uint8_t bitIndex = getErrorBitIndex(0x40);
-						if(errorSendCount[errorCheckID][bitIndex] < 3) {
-							BypassPacket_TypeDef msg = {0,};
-							msg.gid = gID;
-							msg.sid = errorCheckID;
-							msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
-							strcpy((char*)msg.data, "COMM");
-							osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
-							errorSendCount[errorCheckID][bitIndex]++;
-						}
-					}
-					
-					// Bit 7: Motor Not Assigned
-					if(errorStatus & 0x80) {
-						uint8_t bitIndex = getErrorBitIndex(0x80);
-						if(errorSendCount[errorCheckID][bitIndex] < 3) {
-							BypassPacket_TypeDef msg = {0,};
-							msg.gid = gID;
-							msg.sid = errorCheckID;
-							msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
-							strcpy((char*)msg.data, "NASS");
-							osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
-							errorSendCount[errorCheckID][bitIndex]++;
-						}
-					}
+			}
+			
+			// Bit 2: Overheating Error
+			if(errorStatus & 0x04) {
+				uint8_t bitIndex = getErrorBitIndex(0x04);
+				if(errorSendCount[motorID][bitIndex] < 3) {
+					BypassPacket_TypeDef msg = {0,};
+					msg.gid = gID;
+					msg.sid = motorID;
+					msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
+					strcpy((char*)msg.data, "HEAT");
+					osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+					errorSendCount[motorID][bitIndex]++;
+				}
+			}
+			
+			// Bit 3: Motor Encoder Error
+			if(errorStatus & 0x08) {
+				uint8_t bitIndex = getErrorBitIndex(0x08);
+				if(errorSendCount[motorID][bitIndex] < 3) {
+					BypassPacket_TypeDef msg = {0,};
+					msg.gid = gID;
+					msg.sid = motorID;
+					msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
+					strcpy((char*)msg.data, "ENCR");
+					osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+					errorSendCount[motorID][bitIndex]++;
+				}
+			}
+			
+			// Bit 4: Electrical Shock Error
+			if(errorStatus & 0x10) {
+				uint8_t bitIndex = getErrorBitIndex(0x10);
+				if(errorSendCount[motorID][bitIndex] < 3) {
+					BypassPacket_TypeDef msg = {0,};
+					msg.gid = gID;
+					msg.sid = motorID;
+					msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
+					strcpy((char*)msg.data, "SHCK");
+					osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+					errorSendCount[motorID][bitIndex]++;
+				}
+			}
+			
+			// Bit 5: Overload Error
+			if(errorStatus & 0x20) {
+				uint8_t bitIndex = getErrorBitIndex(0x20);
+				if(errorSendCount[motorID][bitIndex] < 3) {
+					BypassPacket_TypeDef msg = {0,};
+					msg.gid = gID;
+					msg.sid = motorID;
+					msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
+					strcpy((char*)msg.data, "LOAD");
+					osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+					errorSendCount[motorID][bitIndex]++;
+				}
+			}
+			
+			// Bit 6: Communication Failure
+			if(errorStatus & 0x40) {
+				uint8_t bitIndex = getErrorBitIndex(0x40);
+				if(errorSendCount[motorID][bitIndex] < 3) {
+					BypassPacket_TypeDef msg = {0,};
+					msg.gid = gID;
+					msg.sid = motorID;
+					msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
+					strcpy((char*)msg.data, "COMM");
+					osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+					errorSendCount[motorID][bitIndex]++;
+				}
+			}
+			
+			// Bit 7: Motor Not Assigned
+			if(errorStatus & 0x80) {
+				uint8_t bitIndex = getErrorBitIndex(0x80);
+				if(errorSendCount[motorID][bitIndex] < 3) {
+					BypassPacket_TypeDef msg = {0,};
+					msg.gid = gID;
+					msg.sid = motorID;
+					msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
+					strcpy((char*)msg.data, "NASS");
+					osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+					errorSendCount[motorID][bitIndex]++;
 				}
 			}
 		}
-		
-		// 다음 연결된 모터로 이동
-		errorCheckID = findNextConnectedMotor(errorCheckID);
-		
-		t_rxLastRxMotion.tickUpdate();
+	}
+}
+
+void allHardwareErrorCheck(void){
+	// 모든 모터 (1~10)에 대해 개별적으로 체크
+	for(uint8_t motorID = 1; motorID <= 10; motorID++) {
+		// 해당 모터의 마지막 모션 수신 후 100ms가 지났는지 확인
+		if(t_rxLastRxMotion[motorID].tickCheck(100)) {
+			// 100ms가 지난 모터에 대해 하드웨어 에러 체크 수행
+			checkMotorHardwareError(motorID);
+			// 해당 모터의 타이머 업데이트 (다음 100ms 후 다시 체크)
+			t_rxLastRxMotion[motorID].tickUpdate();
+		}
 	}
 }
 
 void DxlTask(void *argument)
 {
 	/* USER CODE BEGIN DxlTask */
-	t_rxLastRxMotion.tickUpdate();
+	// 모든 모터의 타이머 초기화
+	for(uint8_t i = 1; i <= 10; i++) {
+		t_rxLastRxMotion[i].tickUpdate();
+	}
 
 	BypassPacket_TypeDef rx_bypass;
 	osDelay(1000);
@@ -258,8 +246,8 @@ void DxlTask(void *argument)
 void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx) {
 
 	//240119 init error -> 응답 하지 않음
-	if(dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) == Motor::Status_InitError)
-		return;
+	//if(dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) == Motor::Status_InitError)
+	//	return;
 
 	switch (cmd_rx->cmd) {
 	case MRS_RX_DATA1: {
@@ -270,15 +258,24 @@ void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx) {
 
 			if(cmd_rx->sid > 10)
 				return;
+			
 			if(dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) != Motor::Status_PreRun){
 				dxlManager.initializeOne(cmd_rx->sid);
 				for(int i = 0; i < 8; i++) {
 					errorSendCount[cmd_rx->sid][i] = 0;
 				}
 			}
-
-			
-			dxlManager.setSettingInfo(
+		
+			if(dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) == Motor::Status_InitError){
+				BypassPacket_TypeDef msg = {0,};
+				msg.gid = cmd_rx->gid;
+				msg.sid = cmd_rx->sid;
+				msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
+				strcpy((char*)msg.data, "INIERR");
+				osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+			}
+			else{
+				dxlManager.setSettingInfo(
 					cmd_rx->gid,
 					cmd_rx->sid,
 					(pData->direction == 0 ? DXL_ROT_CW : DXL_ROT_CCW),
@@ -287,13 +284,13 @@ void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx) {
 					0
 					);
 
-			BypassPacket_TypeDef msg;
-			msg.gid = cmd_rx->gid;
-			msg.sid = cmd_rx->sid;
-			msg.cmd = MRS_TX_DATA1_ACK;
-			memcpy(msg.data, (uint8_t *)pData, 8);
-			osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
-		//}
+				BypassPacket_TypeDef msg;
+				msg.gid = cmd_rx->gid;
+				msg.sid = cmd_rx->sid;
+				msg.cmd = MRS_TX_DATA1_ACK;
+				memcpy(msg.data, (uint8_t *)pData, 8);
+				osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+			}
 		break;
 	}
 
@@ -358,7 +355,10 @@ void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx) {
 		prtc_data_ctl_motion_adc_t *pData = (prtc_data_ctl_motion_adc_t*) cmd_rx->data;
 		dxlManager.setPosition(cmd_rx->sid, pData->adc_val);
 
-		t_rxLastRxMotion.tickUpdate();
+		// 해당 모터의 타이머만 업데이트 (sid 범위 체크)
+		if(cmd_rx->sid > 0 && cmd_rx->sid <= 10) {
+			t_rxLastRxMotion[cmd_rx->sid].tickUpdate();
+		}
 		break;
 	}
 	case MRS_RX_JOG_MOVE : {
