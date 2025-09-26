@@ -63,7 +63,7 @@ git submodule update --init --recursive
 | Bit 3 (0x08) | `ENCR` | Encoder | 모터의 엔코더가 동작하지 않는 경우 |
 | Bit 4 (0x10) | `SHCK` | Electrical Shock | 전기적으로 회로가 충격을 받았거나 입력 전력이 부족한 경우 |
 | Bit 5 (0x20) | `LOAD` | Overload | 최대 출력으로 제어할 수 없는 하중이 지속적으로 발생한 경우 |
-| Bit 6 (0x40) | `COMM` | Communication | 통신 실패 |
+| Bit 6 (0x40) | `COMM` | Communication | 통신 실패 (3회 연속 실패 시 발생) |
 | Bit 7 (0x80) | `NASS` | Not Assigned | 할당되지 않은 모터 |
 
 ### 에러 감지 주기
@@ -71,6 +71,14 @@ git submodule update --init --recursive
 - 100ms마다 Status_Run 상태의 모터들을 순환하며 하드웨어 에러 체크
 - 연결되지 않은 모터는 자동으로 건너뛰어 효율성 향상
 - 각 에러는 `MRS_TX_HARDWARE_ERROR_EVENT` 명령으로 상위 시스템에 전송
+- **중복 전송 방지**: 각 에러별로 최대 3번까지만 전송하여 CAN 네트워크 부하 감소
+- **자동 복구**: 에러가 해결되면 전송 카운터가 자동으로 리셋되어 재발 시 다시 전송
+
+### 통신 실패 안정성 강화
+
+- **통신 실패 판정**: 3회 연속 통신 실패 시에만 `COMM` 에러로 판정
+- **통신 복구**: 3회 미만에서 통신이 성공하면 실패 카운터가 0으로 리셋
+- **일시적 노이즈 무시**: 일회성 통신 장애는 에러로 처리하지 않아 안정성 향상
 
 
 

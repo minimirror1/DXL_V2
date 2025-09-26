@@ -46,6 +46,23 @@ void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx);
 Tick t_rxLastRxMotion;
 uint8_t errorCheckID = 1;  // 1부터 시작
 
+// 에러 전송 카운터 배열 [모터ID][에러비트] - 각 에러별로 3번까지만 전송
+uint8_t errorSendCount[11][8] = {0};  // 모터ID 0~10, 에러비트 0~7
+
+// 에러 비트 인덱스를 반환하는 함수
+uint8_t getErrorBitIndex(uint8_t errorBit) {
+    switch(errorBit) {
+        case 0x01: return 0;  // Bit 0
+        case 0x04: return 2;  // Bit 2  
+        case 0x08: return 3;  // Bit 3
+        case 0x10: return 4;  // Bit 4
+        case 0x20: return 5;  // Bit 5
+        case 0x40: return 6;  // Bit 6
+        case 0x80: return 7;  // Bit 7
+        default: return 0;
+    }
+}
+
 // 다음 연결된 모터 ID를 찾는 함수
 uint8_t findNextConnectedMotor(uint8_t currentID) {
 	uint8_t nextID = currentID;
@@ -76,83 +93,110 @@ void allHardwareErrorCheck(void){
 			if(status == Motor::Status_Run) {
 				uint8_t errorStatus = dxlManager.getHardwareErrorStatus(errorCheckID);
 				
-				// 하드웨어 에러 비트별 분류 처리
-				if(errorStatus != 0) {
+				// 에러가 해결된 경우 카운터 리셋
+				if(errorStatus == 0) {
+					for(int i = 0; i < 8; i++) {
+						errorSendCount[errorCheckID][i] = 0;
+					}
+				}
+				else {
+					// 하드웨어 에러 비트별 분류 처리 - 3번까지만 전송
 					// Bit 0: Input Voltage Error
 					if(errorStatus & 0x01) {
-						// Input Voltage Error 처리
-						BypassPacket_TypeDef msg = {0,};
-						msg.gid = gID;
-						msg.sid = errorCheckID;
-						msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
-						strcpy((char*)msg.data, "VOLT");
-						osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+						uint8_t bitIndex = getErrorBitIndex(0x01);
+						if(errorSendCount[errorCheckID][bitIndex] < 3) {
+							BypassPacket_TypeDef msg = {0,};
+							msg.gid = gID;
+							msg.sid = errorCheckID;
+							msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
+							strcpy((char*)msg.data, "VOLT");
+							osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+							errorSendCount[errorCheckID][bitIndex]++;
+						}
 					}
 					
 					// Bit 2: Overheating Error
 					if(errorStatus & 0x04) {
-						// Overheating Error 처리
-						BypassPacket_TypeDef msg = {0,};
-						msg.gid = gID;
-						msg.sid = errorCheckID;
-						msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
-						strcpy((char*)msg.data, "HEAT");
-						osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+						uint8_t bitIndex = getErrorBitIndex(0x04);
+						if(errorSendCount[errorCheckID][bitIndex] < 3) {
+							BypassPacket_TypeDef msg = {0,};
+							msg.gid = gID;
+							msg.sid = errorCheckID;
+							msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
+							strcpy((char*)msg.data, "HEAT");
+							osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+							errorSendCount[errorCheckID][bitIndex]++;
+						}
 					}
 					
 					// Bit 3: Motor Encoder Error
 					if(errorStatus & 0x08) {
-						// Motor Encoder Error 처리
-						BypassPacket_TypeDef msg = {0,};
-						msg.gid = gID;
-						msg.sid = errorCheckID;
-						msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
-						strcpy((char*)msg.data, "ENCR");
-						osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+						uint8_t bitIndex = getErrorBitIndex(0x08);
+						if(errorSendCount[errorCheckID][bitIndex] < 3) {
+							BypassPacket_TypeDef msg = {0,};
+							msg.gid = gID;
+							msg.sid = errorCheckID;
+							msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
+							strcpy((char*)msg.data, "ENCR");
+							osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+							errorSendCount[errorCheckID][bitIndex]++;
+						}
 					}
 					
 					// Bit 4: Electrical Shock Error
 					if(errorStatus & 0x10) {
-						// Electrical Shock Error 처리
-						BypassPacket_TypeDef msg = {0,};
-						msg.gid = gID;
-						msg.sid = errorCheckID;
-						msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
-						strcpy((char*)msg.data, "SHCK");
-						osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+						uint8_t bitIndex = getErrorBitIndex(0x10);
+						if(errorSendCount[errorCheckID][bitIndex] < 3) {
+							BypassPacket_TypeDef msg = {0,};
+							msg.gid = gID;
+							msg.sid = errorCheckID;
+							msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
+							strcpy((char*)msg.data, "SHCK");
+							osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+							errorSendCount[errorCheckID][bitIndex]++;
+						}
 					}
 					
 					// Bit 5: Overload Error
 					if(errorStatus & 0x20) {
-						// Overload Error 처리
-						BypassPacket_TypeDef msg = {0,};
-						msg.gid = gID;
-						msg.sid = errorCheckID;
-						msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
-						strcpy((char*)msg.data, "LOAD");
-						osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+						uint8_t bitIndex = getErrorBitIndex(0x20);
+						if(errorSendCount[errorCheckID][bitIndex] < 3) {
+							BypassPacket_TypeDef msg = {0,};
+							msg.gid = gID;
+							msg.sid = errorCheckID;
+							msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
+							strcpy((char*)msg.data, "LOAD");
+							osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+							errorSendCount[errorCheckID][bitIndex]++;
+						}
 					}
 					
 					// Bit 6: Communication Failure
 					if(errorStatus & 0x40) {
-						// Communication Failure 처리
-						BypassPacket_TypeDef msg = {0,};
-						msg.gid = gID;
-						msg.sid = errorCheckID;
-						msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
-						strcpy((char*)msg.data, "COMM");
-						osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+						uint8_t bitIndex = getErrorBitIndex(0x40);
+						if(errorSendCount[errorCheckID][bitIndex] < 3) {
+							BypassPacket_TypeDef msg = {0,};
+							msg.gid = gID;
+							msg.sid = errorCheckID;
+							msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
+							strcpy((char*)msg.data, "COMM");
+							osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+							errorSendCount[errorCheckID][bitIndex]++;
+						}
 					}
 					
 					// Bit 7: Motor Not Assigned
 					if(errorStatus & 0x80) {
-						// Motor Not Assigned 처리
-						BypassPacket_TypeDef msg = {0,};
-						msg.gid = gID;
-						msg.sid = errorCheckID;
-						msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
-						strcpy((char*)msg.data, "NASS");
-						osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+						uint8_t bitIndex = getErrorBitIndex(0x80);
+						if(errorSendCount[errorCheckID][bitIndex] < 3) {
+							BypassPacket_TypeDef msg = {0,};
+							msg.gid = gID;
+							msg.sid = errorCheckID;
+							msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
+							strcpy((char*)msg.data, "NASS");
+							osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+							errorSendCount[errorCheckID][bitIndex]++;
+						}
 					}
 				}
 			}
@@ -179,7 +223,7 @@ void DxlTask(void *argument)
 	DXL_Manager_Init();
 	//DXL_motor dxl1(1, 2, Motor::Robotis_Type, &serial1);
 	//dxl1.init();
-	dxlManager.initializeAll();
+	//dxlManager.initializeAll();
 
 	/* Infinite loop */
 	for (;;) {
@@ -224,6 +268,16 @@ void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx) {
 		//if(dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) == Motor::Status_PreRun
 		//		||dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) == Motor::Status_SettingInfo){
 
+			if(cmd_rx->sid > 10)
+				return;
+			if(dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) != Motor::Status_PreRun){
+				dxlManager.initializeOne(cmd_rx->sid);
+				for(int i = 0; i < 8; i++) {
+					errorSendCount[cmd_rx->sid][i] = 0;
+				}
+			}
+
+			
 			dxlManager.setSettingInfo(
 					cmd_rx->gid,
 					cmd_rx->sid,
@@ -335,10 +389,10 @@ void DXL_Manager_Init(void){
 
 	for(int i = 1; i <= 10; i++)
 		dxlManager.addDXLObject(gID, i, Motor::Robotis_Type, &serial1);
-	for(int i = 11; i <= 20; i++)
-		dxlManager.addDXLObject(gID, i, Motor::Robotis_Type, &serial2);
-	for(int i = 21; i <= 30; i++)
-		dxlManager.addDXLObject(gID, i, Motor::Robotis_Type, &serial3);
+	// for(int i = 11; i <= 20; i++)
+	// 	dxlManager.addDXLObject(gID, i, Motor::Robotis_Type, &serial2);
+	// for(int i = 21; i <= 30; i++)
+	// 	dxlManager.addDXLObject(gID, i, Motor::Robotis_Type, &serial3);
 }
 
 void Serial_Init(void){
