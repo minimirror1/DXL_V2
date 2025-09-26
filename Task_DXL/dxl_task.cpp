@@ -43,9 +43,133 @@ void Serial_Init(void);
 static uint8_t readGroupID(void);
 void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx);
 
+Tick t_rxLastRxMotion;
+uint8_t errorCheckID = 1;  // 1부터 시작
+
+// 다음 연결된 모터 ID를 찾는 함수
+uint8_t findNextConnectedMotor(uint8_t currentID) {
+	uint8_t nextID = currentID;
+	uint8_t gID = readGroupID();
+	
+	// 최대 10번까지 순환하면서 연결된 모터 찾기
+	for(uint8_t i = 0; i < 10; i++) {
+		nextID++;
+		if(nextID > 10) nextID = 1;  // 1~10 범위에서 순환
+		
+		Motor::Status status = dxlManager.getStatus(gID, nextID);
+		// 연결된 모터인지 확인 (Status_None이나 InitError가 아니면 연결됨)
+		if(status != Motor::Status_None && status != Motor::Status_InitError) {
+			return nextID;
+		}
+	}
+	return currentID;  // 연결된 모터가 없으면 현재 ID 유지
+}
+
+void allHardwareErrorCheck(void){
+	if(t_rxLastRxMotion.tickCheck(100)){
+		uint8_t gID = readGroupID();
+		Motor::Status status = dxlManager.getStatus(gID, errorCheckID);
+		
+		// 현재 모터가 연결되어 있는지 확인
+		if(status != Motor::Status_None && status != Motor::Status_InitError) {
+			// Status_Run인 경우만 하드웨어 에러 체크
+			if(status == Motor::Status_Run) {
+				uint8_t errorStatus = dxlManager.getHardwareErrorStatus(errorCheckID);
+				
+				// 하드웨어 에러 비트별 분류 처리
+				if(errorStatus != 0) {
+					// Bit 0: Input Voltage Error
+					if(errorStatus & 0x01) {
+						// Input Voltage Error 처리
+						BypassPacket_TypeDef msg = {0,};
+						msg.gid = gID;
+						msg.sid = errorCheckID;
+						msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
+						strcpy((char*)msg.data, "VOLT");
+						osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+					}
+					
+					// Bit 2: Overheating Error
+					if(errorStatus & 0x04) {
+						// Overheating Error 처리
+						BypassPacket_TypeDef msg = {0,};
+						msg.gid = gID;
+						msg.sid = errorCheckID;
+						msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
+						strcpy((char*)msg.data, "HEAT");
+						osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+					}
+					
+					// Bit 3: Motor Encoder Error
+					if(errorStatus & 0x08) {
+						// Motor Encoder Error 처리
+						BypassPacket_TypeDef msg = {0,};
+						msg.gid = gID;
+						msg.sid = errorCheckID;
+						msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
+						strcpy((char*)msg.data, "ENCR");
+						osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+					}
+					
+					// Bit 4: Electrical Shock Error
+					if(errorStatus & 0x10) {
+						// Electrical Shock Error 처리
+						BypassPacket_TypeDef msg = {0,};
+						msg.gid = gID;
+						msg.sid = errorCheckID;
+						msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
+						strcpy((char*)msg.data, "SHCK");
+						osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+					}
+					
+					// Bit 5: Overload Error
+					if(errorStatus & 0x20) {
+						// Overload Error 처리
+						BypassPacket_TypeDef msg = {0,};
+						msg.gid = gID;
+						msg.sid = errorCheckID;
+						msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
+						strcpy((char*)msg.data, "LOAD");
+						osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+					}
+					
+					// Bit 6: Communication Failure
+					if(errorStatus & 0x40) {
+						// Communication Failure 처리
+						BypassPacket_TypeDef msg = {0,};
+						msg.gid = gID;
+						msg.sid = errorCheckID;
+						msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
+						strcpy((char*)msg.data, "COMM");
+						osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+					}
+					
+					// Bit 7: Motor Not Assigned
+					if(errorStatus & 0x80) {
+						// Motor Not Assigned 처리
+						BypassPacket_TypeDef msg = {0,};
+						msg.gid = gID;
+						msg.sid = errorCheckID;
+						msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
+						strcpy((char*)msg.data, "NASS");
+						osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+					}
+				}
+			}
+		}
+		
+		// 다음 연결된 모터로 이동
+		errorCheckID = findNextConnectedMotor(errorCheckID);
+		
+		t_rxLastRxMotion.tickUpdate();
+	}
+}
+
 void DxlTask(void *argument)
 {
 	/* USER CODE BEGIN DxlTask */
+	t_rxLastRxMotion.tickUpdate();
+
 	BypassPacket_TypeDef rx_bypass;
 	osDelay(1000);
 
@@ -73,6 +197,7 @@ void DxlTask(void *argument)
 		dxlManager.allMotorProcess();
 
 		//dxlManager.allTimeCheckPosi();
+		allHardwareErrorCheck();
 
 		serial1.rxLed_Check();
 		serial2.rxLed_Check();
@@ -178,6 +303,8 @@ void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx) {
 	case MRS_RX_MOTION : {
 		prtc_data_ctl_motion_adc_t *pData = (prtc_data_ctl_motion_adc_t*) cmd_rx->data;
 		dxlManager.setPosition(cmd_rx->sid, pData->adc_val);
+
+		t_rxLastRxMotion.tickUpdate();
 		break;
 	}
 	case MRS_RX_JOG_MOVE : {
