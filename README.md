@@ -52,19 +52,25 @@ git submodule update --init --recursive
 
 ## 2. 하드웨어 에러 코드
 
-`allHardwareErrorCheck()` 함수에서 사용되는 4글자 에러 코드 목록입니다.
+`allHardwareErrorCheck()` 함수에서 사용되는 7글자 에러 코드 목록입니다.
 
 각 모터의 하드웨어 에러 상태는 8비트 플래그로 전송되며, 비트별로 다음과 같은 에러 코드가 할당됩니다:
 
-| 비트 | 4글자 코드 | 원래 풀 스펠링 | 설명 |
+| 비트 | 7글자 코드 | 원래 풀 스펠링 | 설명 |
 |------|-----------|---------------|------|
-| Bit 0 (0x01) | `VOLT` | Voltage | 입력 전압이 설정된 동작전압 범위를 벗어난 경우 |
-| Bit 2 (0x04) | `HEAT` | Overheating | 설정된 온도를 벗어난 경우 |
-| Bit 3 (0x08) | `ENCR` | Encoder | 모터의 엔코더가 동작하지 않는 경우 |
-| Bit 4 (0x10) | `SHCK` | Electrical Shock | 전기적으로 회로가 충격을 받았거나 입력 전력이 부족한 경우 |
-| Bit 5 (0x20) | `LOAD` | Overload | 최대 출력으로 제어할 수 없는 하중이 지속적으로 발생한 경우 |
-| Bit 6 (0x40) | `COMM` | Communication | 통신 실패 (3회 연속 실패 시 발생) |
-| Bit 7 (0x80) | `NASS` | Not Assigned | 할당되지 않은 모터 |
+| Bit 0 (0x01) | `Voltage` | Voltage | 입력 전압이 설정된 동작전압 범위를 벗어난 경우 |
+| Bit 2 (0x04) | `HotTemp` | Hot + Temp | 설정된 온도를 벗어난 경우 |
+| Bit 3 (0x08) | `Encoder` | Encoder | 모터의 엔코더가 동작하지 않는 경우 |
+| Bit 4 (0x10) | `EShock` | E + Shock | 전기적으로 회로가 충격을 받았거나 입력 전력이 부족한 경우 |
+| Bit 5 (0x20) | `OvrLoad` | Ovr + Load | 최대 출력으로 제어할 수 없는 하중이 지속적으로 발생한 경우 |
+| Bit 6 (0x40) | `CommErr` | Comm + Err | 통신 실패 (3회 연속 실패 시 발생) |
+| Bit 7 (0x80) | `NotAsgn` | Not + Asgn | 할당되지 않은 모터 |
+
+### 추가 에러 코드
+
+| 에러 코드 | 원래 풀 스펠링 | 설명 |
+|-----------|---------------|------|
+| `InitErr` | Init + Err | 모터 초기화 실패 (Status_InitError 발생 시) |
 
 ### 에러 감지 주기 (모터별 개별 관리)
 

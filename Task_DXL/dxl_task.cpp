@@ -88,7 +88,7 @@ void checkMotorHardwareError(uint8_t motorID) {
 					msg.gid = gID;
 					msg.sid = motorID;
 					msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
-					strcpy((char*)msg.data, "VOLT");
+					strcpy((char*)msg.data, "Voltage");
 					osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
 					errorSendCount[motorID][bitIndex]++;
 				}
@@ -102,7 +102,7 @@ void checkMotorHardwareError(uint8_t motorID) {
 					msg.gid = gID;
 					msg.sid = motorID;
 					msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
-					strcpy((char*)msg.data, "HEAT");
+					strcpy((char*)msg.data, "HotTemp");
 					osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
 					errorSendCount[motorID][bitIndex]++;
 				}
@@ -116,7 +116,7 @@ void checkMotorHardwareError(uint8_t motorID) {
 					msg.gid = gID;
 					msg.sid = motorID;
 					msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
-					strcpy((char*)msg.data, "ENCR");
+					strcpy((char*)msg.data, "Encoder");
 					osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
 					errorSendCount[motorID][bitIndex]++;
 				}
@@ -130,7 +130,7 @@ void checkMotorHardwareError(uint8_t motorID) {
 					msg.gid = gID;
 					msg.sid = motorID;
 					msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
-					strcpy((char*)msg.data, "SHCK");
+					strcpy((char*)msg.data, "EShock");
 					osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
 					errorSendCount[motorID][bitIndex]++;
 				}
@@ -144,7 +144,7 @@ void checkMotorHardwareError(uint8_t motorID) {
 					msg.gid = gID;
 					msg.sid = motorID;
 					msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
-					strcpy((char*)msg.data, "LOAD");
+					strcpy((char*)msg.data, "OvrLoad");
 					osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
 					errorSendCount[motorID][bitIndex]++;
 				}
@@ -158,7 +158,7 @@ void checkMotorHardwareError(uint8_t motorID) {
 					msg.gid = gID;
 					msg.sid = motorID;
 					msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
-					strcpy((char*)msg.data, "COMM");
+					strcpy((char*)msg.data, "CommErr");
 					osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
 					errorSendCount[motorID][bitIndex]++;
 				}
@@ -172,7 +172,7 @@ void checkMotorHardwareError(uint8_t motorID) {
 					msg.gid = gID;
 					msg.sid = motorID;
 					msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
-					strcpy((char*)msg.data, "NASS");
+					strcpy((char*)msg.data, "NotAsgn");
 					osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
 					errorSendCount[motorID][bitIndex]++;
 				}
@@ -271,7 +271,7 @@ void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx) {
 				msg.gid = cmd_rx->gid;
 				msg.sid = cmd_rx->sid;
 				msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
-				strcpy((char*)msg.data, "INIERR");
+				strcpy((char*)msg.data, "InitErr");
 				osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
 			}
 			else{
