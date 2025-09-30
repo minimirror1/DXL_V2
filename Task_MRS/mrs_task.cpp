@@ -46,8 +46,8 @@ void MrsTask(void *argument)
 
 	/* MRS protocol */
 	can_init_data_save (&hcan1);
-	gm_motion_TX_LED_init(LD4_GPIO_Port, LD4_Pin, GPIO_PIN_RESET);
-	gm_motion_RX_LED_init(LD5_GPIO_Port, LD5_Pin, GPIO_PIN_RESET);
+	gm_motion_TX_LED_init(LD2_CAN_TX_GPIO_Port, LD2_CAN_TX_Pin, GPIO_PIN_RESET);
+	gm_motion_RX_LED_init(LD1_CAN_RX_GPIO_Port, LD1_CAN_RX_Pin, GPIO_PIN_RESET);
 	CAN_FilterConfig(&hcan1);
 
 	my_gid = idRead(

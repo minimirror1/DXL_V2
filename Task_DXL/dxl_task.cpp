@@ -84,7 +84,7 @@ void DxlTask(void *argument)
 		serial3.rxLed_Check();
 
 		if(t_Run.delay(500))
-			HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
+			HAL_GPIO_TogglePin(LD5_RUN_GPIO_Port, LD5_RUN_Pin);
 
 	}
 	/* USER CODE END DxlTask */
@@ -242,20 +242,20 @@ void DXL_Manager_Init(void){
 void Serial_Init(void){
 	/* serial1 [uart2] 1~10 */
 	serial1.init(&huart2, USART2_IRQn);
-	serial1.init_txLed(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
-	serial1.init_rxLed(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+	serial1.init_txLed(LD3_485_TX_GPIO_Port, LD3_485_TX_Pin, GPIO_PIN_RESET);
+	serial1.init_rxLed(LD4_485_RX_GPIO_Port, LD4_485_RX_Pin, GPIO_PIN_RESET);
 	serial1.init_rs485(USART2_EN_GPIO_Port, USART2_EN_Pin);
 
 	/* serial2 [uart3] 11~20 */
 	serial2.init(&huart3, USART3_IRQn);
-	serial2.init_txLed(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
-	serial2.init_rxLed(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+	serial2.init_txLed(LD3_485_TX_GPIO_Port, LD3_485_TX_Pin, GPIO_PIN_RESET);
+	serial2.init_rxLed(LD4_485_RX_GPIO_Port, LD4_485_RX_Pin, GPIO_PIN_RESET);
 	serial2.init_rs485(USART3_EN_GPIO_Port, USART3_EN_Pin);
 
 	/* serial3 [uart1] 21~30 */
 	serial3.init(&huart1, USART1_IRQn);
-	serial3.init_txLed(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
-	serial3.init_rxLed(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+	serial3.init_txLed(LD3_485_TX_GPIO_Port, LD3_485_TX_Pin, GPIO_PIN_RESET);
+	serial3.init_rxLed(LD4_485_RX_GPIO_Port, LD4_485_RX_Pin, GPIO_PIN_RESET);
 	serial3.init_rs485(USART1_EN_GPIO_Port, USART1_EN_Pin);
 }
 
