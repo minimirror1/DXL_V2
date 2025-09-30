@@ -18,6 +18,7 @@
 /* User Task -----------------------------------------------------------------*/
 #include "dxl_task.h"
 #include "mrs_task.h"
+#include "dxl_error_handler.h"
 
 /* Component -----------------------------------------------------------------*/
 #include "UART_Class.h"
@@ -43,117 +44,11 @@ void Serial_Init(void);
 static uint8_t readGroupID(void);
 void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx);
 
-// 상수 정의
-#define MAX_MOTOR_COUNT 10
-#define MAX_ERROR_BITS 8
-#define ERROR_SEND_LIMIT 3
-#define ERROR_CHECK_INTERVAL_MS 100
-
-// 에러 정의 구조체
-typedef struct {
-    uint8_t errorBit;       // 에러 비트 마스크
-    uint8_t bitIndex;       // 배열 인덱스
-    const char* errorMsg;   // 에러 메시지
-} ErrorDefinition_t;
-
-// 하드웨어 에러 정의 테이블
-static const ErrorDefinition_t HW_ERROR_TABLE[] = {
-    {0x01, 0, "Voltage"},   // Bit 0: Input Voltage Error
-    {0x04, 2, "HotTemp"},   // Bit 2: Overheating Error
-    {0x08, 3, "Encoder"},   // Bit 3: Motor Encoder Error
-    {0x10, 4, "EShock"},    // Bit 4: Electrical Shock Error
-    {0x20, 5, "OvrLoad"},   // Bit 5: Overload Error
-    {0x40, 6, "CommErr"},   // Bit 6: Communication Failure
-    {0x80, 7, "NotAsgn"}    // Bit 7: Motor Not Assigned
-};
-#define HW_ERROR_COUNT (sizeof(HW_ERROR_TABLE) / sizeof(ErrorDefinition_t))
-
-// 모터별 마지막 모션 수신 타이머 배열 (모터 ID 1~10)
-Tick t_rxLastRxMotion[MAX_MOTOR_COUNT + 1];
-
-// 에러 전송 카운터 배열 [모터ID][에러비트]
-uint8_t errorSendCount[MAX_MOTOR_COUNT + 1][MAX_ERROR_BITS] = {0};
-
-// 에러 카운터 리셋 (모터의 모든 에러 카운터 초기화)
-static void resetErrorCounters(uint8_t motorID) {
-    if(motorID > MAX_MOTOR_COUNT) return;
-    
-    for(int i = 0; i < MAX_ERROR_BITS; i++) {
-        errorSendCount[motorID][i] = 0;
-    }
-}
-
-// 개별 에러 전송 처리
-static void sendHardwareErrorMessage(uint8_t gID, uint8_t motorID, 
-                                     const ErrorDefinition_t* errorDef) {
-    if(motorID > MAX_MOTOR_COUNT) return;
-    
-    // 에러 전송 횟수 제한 체크
-    if(errorSendCount[motorID][errorDef->bitIndex] < ERROR_SEND_LIMIT) {
-        BypassPacket_TypeDef msg = {0,};
-        msg.gid = gID;
-        msg.sid = motorID;
-        msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
-        strcpy((char*)msg.data, errorDef->errorMsg);
-        osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
-        errorSendCount[motorID][errorDef->bitIndex]++;
-    }
-}
-
-// 모터가 에러 체크 가능한 상태인지 확인
-static bool isMotorReadyForErrorCheck(Motor::Status status) {
-    return (status != Motor::Status_None && 
-            status != Motor::Status_InitError && 
-            status == Motor::Status_Run);
-}
-
-// 개별 모터의 하드웨어 에러 체크 및 전송 처리
-void checkMotorHardwareError(uint8_t motorID) {
-    if(motorID > MAX_MOTOR_COUNT) return;
-    
-    uint8_t gID = readGroupID();
-    Motor::Status status = dxlManager.getStatus(gID, motorID);
-    
-    // 연결되어 있고 Status_Run 상태인 모터만 체크
-    if(!isMotorReadyForErrorCheck(status)) {
-        return;
-    }
-    
-    uint8_t errorStatus = dxlManager.getHardwareErrorStatus(motorID);
-    
-    // 에러가 해결된 경우 카운터 리셋
-    if(errorStatus == 0) {
-        resetErrorCounters(motorID);
-        return;
-    }
-    
-    // 하드웨어 에러 테이블을 순회하며 에러 체크 및 전송
-    for(uint8_t i = 0; i < HW_ERROR_COUNT; i++) {
-        if(errorStatus & HW_ERROR_TABLE[i].errorBit) {
-            sendHardwareErrorMessage(gID, motorID, &HW_ERROR_TABLE[i]);
-        }
-    }
-}
-
-// 모든 모터의 하드웨어 에러 주기적 체크
-void allHardwareErrorCheck(void) {
-    // 모든 모터 (1~MAX_MOTOR_COUNT)에 대해 개별적으로 체크
-    for(uint8_t motorID = 1; motorID <= MAX_MOTOR_COUNT; motorID++) {
-        // 해당 모터의 마지막 모션 수신 후 ERROR_CHECK_INTERVAL_MS가 지났는지 확인
-        if(t_rxLastRxMotion[motorID].tickCheck(ERROR_CHECK_INTERVAL_MS)) {
-            checkMotorHardwareError(motorID);
-            t_rxLastRxMotion[motorID].tickUpdate();
-        }
-    }
-}
-
 void DxlTask(void *argument)
 {
 	/* USER CODE BEGIN DxlTask */
-	// 모든 모터의 타이머 초기화
-	for(uint8_t i = 1; i <= MAX_MOTOR_COUNT; i++) {
-		t_rxLastRxMotion[i].tickUpdate();
-	}
+	// 에러 핸들러 초기화 (모터 타이머 및 카운터 초기화)
+	DXL_ErrorHandler_Init();
 
 	BypassPacket_TypeDef rx_bypass;
 	osDelay(1000);
@@ -182,7 +77,7 @@ void DxlTask(void *argument)
 		dxlManager.allMotorProcess();
 
 		//dxlManager.allTimeCheckPosi();
-		allHardwareErrorCheck();
+		DXL_ErrorHandler_CheckAll();
 
 		serial1.rxLed_Check();
 		serial2.rxLed_Check();
@@ -214,7 +109,7 @@ void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx) {
 			
 			if(dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) != Motor::Status_PreRun){
 				dxlManager.initializeOne(cmd_rx->sid);
-				resetErrorCounters(cmd_rx->sid);
+				DXL_ErrorHandler_ResetCounters(cmd_rx->sid);
 			}
 		
 			if(dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) == Motor::Status_InitError){
@@ -306,10 +201,8 @@ void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx) {
 		prtc_data_ctl_motion_adc_t *pData = (prtc_data_ctl_motion_adc_t*) cmd_rx->data;
 		dxlManager.setPosition(cmd_rx->sid, pData->adc_val);
 
-		// 해당 모터의 타이머만 업데이트 (sid 범위 체크)
-		if(cmd_rx->sid > 0 && cmd_rx->sid <= MAX_MOTOR_COUNT) {
-			t_rxLastRxMotion[cmd_rx->sid].tickUpdate();
-		}
+		// 해당 모터의 모션 타이머 업데이트
+		DXL_ErrorHandler_UpdateMotionTimer(cmd_rx->sid);
 		break;
 	}
 	case MRS_RX_JOG_MOVE : {
