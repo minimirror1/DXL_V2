@@ -247,16 +247,16 @@ void Serial_Init(void){
 	serial1.init_rs485(USART2_EN_GPIO_Port, USART2_EN_Pin);
 
 	/* serial2 [uart3] 11~20 */
-	serial2.init(&huart3, USART3_IRQn);
-	serial2.init_txLed(LD3_485_TX_GPIO_Port, LD3_485_TX_Pin, GPIO_PIN_RESET);
-	serial2.init_rxLed(LD4_485_RX_GPIO_Port, LD4_485_RX_Pin, GPIO_PIN_RESET);
-	serial2.init_rs485(USART3_EN_GPIO_Port, USART3_EN_Pin);
+	//serial2.init(&huart3, USART3_IRQn);
+	//serial2.init_txLed(LD3_485_TX_GPIO_Port, LD3_485_TX_Pin, GPIO_PIN_RESET);
+	//serial2.init_rxLed(LD4_485_RX_GPIO_Port, LD4_485_RX_Pin, GPIO_PIN_RESET);
+	//serial2.init_rs485(USART3_EN_GPIO_Port, USART3_EN_Pin);
 
 	/* serial3 [uart1] 21~30 */
-	serial3.init(&huart1, USART1_IRQn);
-	serial3.init_txLed(LD3_485_TX_GPIO_Port, LD3_485_TX_Pin, GPIO_PIN_RESET);
-	serial3.init_rxLed(LD4_485_RX_GPIO_Port, LD4_485_RX_Pin, GPIO_PIN_RESET);
-	serial3.init_rs485(USART1_EN_GPIO_Port, USART1_EN_Pin);
+	//serial3.init(&huart1, USART1_IRQn);
+	//serial3.init_txLed(LD3_485_TX_GPIO_Port, LD3_485_TX_Pin, GPIO_PIN_RESET);
+	//serial3.init_rxLed(LD4_485_RX_GPIO_Port, LD4_485_RX_Pin, GPIO_PIN_RESET);
+	//serial3.init_rs485(USART1_EN_GPIO_Port, USART1_EN_Pin);
 }
 
 static uint8_t idRead(
