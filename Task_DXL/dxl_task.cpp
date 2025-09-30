@@ -43,162 +43,115 @@ void Serial_Init(void);
 static uint8_t readGroupID(void);
 void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx);
 
+// 상수 정의
+#define MAX_MOTOR_COUNT 10
+#define MAX_ERROR_BITS 8
+#define ERROR_SEND_LIMIT 3
+#define ERROR_CHECK_INTERVAL_MS 100
+
+// 에러 정의 구조체
+typedef struct {
+    uint8_t errorBit;       // 에러 비트 마스크
+    uint8_t bitIndex;       // 배열 인덱스
+    const char* errorMsg;   // 에러 메시지
+} ErrorDefinition_t;
+
+// 하드웨어 에러 정의 테이블
+static const ErrorDefinition_t HW_ERROR_TABLE[] = {
+    {0x01, 0, "Voltage"},   // Bit 0: Input Voltage Error
+    {0x04, 2, "HotTemp"},   // Bit 2: Overheating Error
+    {0x08, 3, "Encoder"},   // Bit 3: Motor Encoder Error
+    {0x10, 4, "EShock"},    // Bit 4: Electrical Shock Error
+    {0x20, 5, "OvrLoad"},   // Bit 5: Overload Error
+    {0x40, 6, "CommErr"},   // Bit 6: Communication Failure
+    {0x80, 7, "NotAsgn"}    // Bit 7: Motor Not Assigned
+};
+#define HW_ERROR_COUNT (sizeof(HW_ERROR_TABLE) / sizeof(ErrorDefinition_t))
+
 // 모터별 마지막 모션 수신 타이머 배열 (모터 ID 1~10)
-Tick t_rxLastRxMotion[11];
+Tick t_rxLastRxMotion[MAX_MOTOR_COUNT + 1];
 
-// 에러 전송 카운터 배열 [모터ID][에러비트] - 각 에러별로 3번까지만 전송
-uint8_t errorSendCount[11][8] = {0};  // 모터ID 0~10, 에러비트 0~7
+// 에러 전송 카운터 배열 [모터ID][에러비트]
+uint8_t errorSendCount[MAX_MOTOR_COUNT + 1][MAX_ERROR_BITS] = {0};
 
-// 에러 비트 인덱스를 반환하는 함수
-uint8_t getErrorBitIndex(uint8_t errorBit) {
-    switch(errorBit) {
-        case 0x01: return 0;  // Bit 0
-        case 0x04: return 2;  // Bit 2  
-        case 0x08: return 3;  // Bit 3
-        case 0x10: return 4;  // Bit 4
-        case 0x20: return 5;  // Bit 5
-        case 0x40: return 6;  // Bit 6
-        case 0x80: return 7;  // Bit 7
-        default: return 0;
+// 에러 카운터 리셋 (모터의 모든 에러 카운터 초기화)
+static void resetErrorCounters(uint8_t motorID) {
+    if(motorID > MAX_MOTOR_COUNT) return;
+    
+    for(int i = 0; i < MAX_ERROR_BITS; i++) {
+        errorSendCount[motorID][i] = 0;
     }
+}
+
+// 개별 에러 전송 처리
+static void sendHardwareErrorMessage(uint8_t gID, uint8_t motorID, 
+                                     const ErrorDefinition_t* errorDef) {
+    if(motorID > MAX_MOTOR_COUNT) return;
+    
+    // 에러 전송 횟수 제한 체크
+    if(errorSendCount[motorID][errorDef->bitIndex] < ERROR_SEND_LIMIT) {
+        BypassPacket_TypeDef msg = {0,};
+        msg.gid = gID;
+        msg.sid = motorID;
+        msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
+        strcpy((char*)msg.data, errorDef->errorMsg);
+        osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+        errorSendCount[motorID][errorDef->bitIndex]++;
+    }
+}
+
+// 모터가 에러 체크 가능한 상태인지 확인
+static bool isMotorReadyForErrorCheck(Motor::Status status) {
+    return (status != Motor::Status_None && 
+            status != Motor::Status_InitError && 
+            status == Motor::Status_Run);
 }
 
 // 개별 모터의 하드웨어 에러 체크 및 전송 처리
 void checkMotorHardwareError(uint8_t motorID) {
-	uint8_t gID = readGroupID();
-	Motor::Status status = dxlManager.getStatus(gID, motorID);
-	
-	// 연결되어 있고 Status_Run 상태인 모터만 체크
-	if(status != Motor::Status_None && status != Motor::Status_InitError && status == Motor::Status_Run) {
-		uint8_t errorStatus = dxlManager.getHardwareErrorStatus(motorID);
-		
-		// 에러가 해결된 경우 카운터 리셋
-		if(errorStatus == 0) {
-			for(int i = 0; i < 8; i++) {
-				errorSendCount[motorID][i] = 0;
-			}
-		}
-		else {
-			// 하드웨어 에러 비트별 분류 처리 - 3번까지만 전송
-			// Bit 0: Input Voltage Error
-			if(errorStatus & 0x01) {
-				uint8_t bitIndex = getErrorBitIndex(0x01);
-				if(errorSendCount[motorID][bitIndex] < 3) {
-					BypassPacket_TypeDef msg = {0,};
-					msg.gid = gID;
-					msg.sid = motorID;
-					msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
-					strcpy((char*)msg.data, "Voltage");
-					osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
-					errorSendCount[motorID][bitIndex]++;
-				}
-			}
-			
-			// Bit 2: Overheating Error
-			if(errorStatus & 0x04) {
-				uint8_t bitIndex = getErrorBitIndex(0x04);
-				if(errorSendCount[motorID][bitIndex] < 3) {
-					BypassPacket_TypeDef msg = {0,};
-					msg.gid = gID;
-					msg.sid = motorID;
-					msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
-					strcpy((char*)msg.data, "HotTemp");
-					osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
-					errorSendCount[motorID][bitIndex]++;
-				}
-			}
-			
-			// Bit 3: Motor Encoder Error
-			if(errorStatus & 0x08) {
-				uint8_t bitIndex = getErrorBitIndex(0x08);
-				if(errorSendCount[motorID][bitIndex] < 3) {
-					BypassPacket_TypeDef msg = {0,};
-					msg.gid = gID;
-					msg.sid = motorID;
-					msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
-					strcpy((char*)msg.data, "Encoder");
-					osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
-					errorSendCount[motorID][bitIndex]++;
-				}
-			}
-			
-			// Bit 4: Electrical Shock Error
-			if(errorStatus & 0x10) {
-				uint8_t bitIndex = getErrorBitIndex(0x10);
-				if(errorSendCount[motorID][bitIndex] < 3) {
-					BypassPacket_TypeDef msg = {0,};
-					msg.gid = gID;
-					msg.sid = motorID;
-					msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
-					strcpy((char*)msg.data, "EShock");
-					osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
-					errorSendCount[motorID][bitIndex]++;
-				}
-			}
-			
-			// Bit 5: Overload Error
-			if(errorStatus & 0x20) {
-				uint8_t bitIndex = getErrorBitIndex(0x20);
-				if(errorSendCount[motorID][bitIndex] < 3) {
-					BypassPacket_TypeDef msg = {0,};
-					msg.gid = gID;
-					msg.sid = motorID;
-					msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
-					strcpy((char*)msg.data, "OvrLoad");
-					osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
-					errorSendCount[motorID][bitIndex]++;
-				}
-			}
-			
-			// Bit 6: Communication Failure
-			if(errorStatus & 0x40) {
-				uint8_t bitIndex = getErrorBitIndex(0x40);
-				if(errorSendCount[motorID][bitIndex] < 3) {
-					BypassPacket_TypeDef msg = {0,};
-					msg.gid = gID;
-					msg.sid = motorID;
-					msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
-					strcpy((char*)msg.data, "CommErr");
-					osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
-					errorSendCount[motorID][bitIndex]++;
-				}
-			}
-			
-			// Bit 7: Motor Not Assigned
-			if(errorStatus & 0x80) {
-				uint8_t bitIndex = getErrorBitIndex(0x80);
-				if(errorSendCount[motorID][bitIndex] < 3) {
-					BypassPacket_TypeDef msg = {0,};
-					msg.gid = gID;
-					msg.sid = motorID;
-					msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
-					strcpy((char*)msg.data, "NotAsgn");
-					osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
-					errorSendCount[motorID][bitIndex]++;
-				}
-			}
-		}
-	}
+    if(motorID > MAX_MOTOR_COUNT) return;
+    
+    uint8_t gID = readGroupID();
+    Motor::Status status = dxlManager.getStatus(gID, motorID);
+    
+    // 연결되어 있고 Status_Run 상태인 모터만 체크
+    if(!isMotorReadyForErrorCheck(status)) {
+        return;
+    }
+    
+    uint8_t errorStatus = dxlManager.getHardwareErrorStatus(motorID);
+    
+    // 에러가 해결된 경우 카운터 리셋
+    if(errorStatus == 0) {
+        resetErrorCounters(motorID);
+        return;
+    }
+    
+    // 하드웨어 에러 테이블을 순회하며 에러 체크 및 전송
+    for(uint8_t i = 0; i < HW_ERROR_COUNT; i++) {
+        if(errorStatus & HW_ERROR_TABLE[i].errorBit) {
+            sendHardwareErrorMessage(gID, motorID, &HW_ERROR_TABLE[i]);
+        }
+    }
 }
 
-void allHardwareErrorCheck(void){
-	// 모든 모터 (1~10)에 대해 개별적으로 체크
-	for(uint8_t motorID = 1; motorID <= 10; motorID++) {
-		// 해당 모터의 마지막 모션 수신 후 100ms가 지났는지 확인
-		if(t_rxLastRxMotion[motorID].tickCheck(100)) {
-			// 100ms가 지난 모터에 대해 하드웨어 에러 체크 수행
-			checkMotorHardwareError(motorID);
-			// 해당 모터의 타이머 업데이트 (다음 100ms 후 다시 체크)
-			t_rxLastRxMotion[motorID].tickUpdate();
-		}
-	}
+// 모든 모터의 하드웨어 에러 주기적 체크
+void allHardwareErrorCheck(void) {
+    // 모든 모터 (1~MAX_MOTOR_COUNT)에 대해 개별적으로 체크
+    for(uint8_t motorID = 1; motorID <= MAX_MOTOR_COUNT; motorID++) {
+        // 해당 모터의 마지막 모션 수신 후 ERROR_CHECK_INTERVAL_MS가 지났는지 확인
+        if(t_rxLastRxMotion[motorID].tickCheck(ERROR_CHECK_INTERVAL_MS)) {
+            checkMotorHardwareError(motorID);
+            t_rxLastRxMotion[motorID].tickUpdate();
+        }
+    }
 }
 
 void DxlTask(void *argument)
 {
 	/* USER CODE BEGIN DxlTask */
 	// 모든 모터의 타이머 초기화
-	for(uint8_t i = 1; i <= 10; i++) {
+	for(uint8_t i = 1; i <= MAX_MOTOR_COUNT; i++) {
 		t_rxLastRxMotion[i].tickUpdate();
 	}
 
@@ -256,14 +209,12 @@ void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx) {
 		//if(dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) == Motor::Status_PreRun
 		//		||dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) == Motor::Status_SettingInfo){
 
-			if(cmd_rx->sid > 10)
+			if(cmd_rx->sid > MAX_MOTOR_COUNT)
 				return;
 			
 			if(dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) != Motor::Status_PreRun){
 				dxlManager.initializeOne(cmd_rx->sid);
-				for(int i = 0; i < 8; i++) {
-					errorSendCount[cmd_rx->sid][i] = 0;
-				}
+				resetErrorCounters(cmd_rx->sid);
 			}
 		
 			if(dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) == Motor::Status_InitError){
@@ -356,7 +307,7 @@ void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx) {
 		dxlManager.setPosition(cmd_rx->sid, pData->adc_val);
 
 		// 해당 모터의 타이머만 업데이트 (sid 범위 체크)
-		if(cmd_rx->sid > 0 && cmd_rx->sid <= 10) {
+		if(cmd_rx->sid > 0 && cmd_rx->sid <= MAX_MOTOR_COUNT) {
 			t_rxLastRxMotion[cmd_rx->sid].tickUpdate();
 		}
 		break;
@@ -387,7 +338,7 @@ void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx) {
 void DXL_Manager_Init(void){
 	uint8_t gID = readGroupID();
 
-	for(int i = 1; i <= 10; i++)
+	for(int i = 1; i <= MAX_MOTOR_COUNT; i++)
 		dxlManager.addDXLObject(gID, i, Motor::Robotis_Type, &serial1);
 	// for(int i = 11; i <= 20; i++)
 	// 	dxlManager.addDXLObject(gID, i, Motor::Robotis_Type, &serial2);
