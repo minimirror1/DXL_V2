@@ -84,12 +84,12 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN Private defines */
 /* Version */
-// 0.0.1 : 231215 최초작성
-// 0.0.2 : 240116 버전읽기 jog 기능 추가
-// 0.0.3 : 240116 dxl 통신 속도 1Mbps 변경
-// 0.0.4 : 240127 queue 최적화
-// 0.0.5 : 반응속도 증가 FreeRTOS 수신Queue 모두 비움
-// 0.0.6 : 동작중 초기위치 이동 동작
+// 0.0.1 : 231215 최초?��?��
+// 0.0.2 : 240116 버전?���? jog 기능 추�?
+// 0.0.3 : 240116 dxl ?��?�� ?��?�� 1Mbps �?�?
+// 0.0.4 : 240127 queue 최적?��
+// 0.0.5 : 반응?��?�� 증�? FreeRTOS ?��?��Queue 모두 비�?
+// 0.0.6 : ?��?���? 초기?���? ?��?�� ?��?��
 
 #define VERSION_MAJOR 0
 #define VERSION_MINOR 0
