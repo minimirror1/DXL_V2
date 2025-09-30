@@ -57,12 +57,12 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define LD1_Pin GPIO_PIN_13
-#define LD1_GPIO_Port GPIOC
-#define LD2_Pin GPIO_PIN_14
-#define LD2_GPIO_Port GPIOC
-#define LD3_Pin GPIO_PIN_15
-#define LD3_GPIO_Port GPIOC
+#define LD1_CAN_RX_Pin GPIO_PIN_13
+#define LD1_CAN_RX_GPIO_Port GPIOC
+#define LD2_CAN_TX_Pin GPIO_PIN_14
+#define LD2_CAN_TX_GPIO_Port GPIOC
+#define LD5_RUN_Pin GPIO_PIN_0
+#define LD5_RUN_GPIO_Port GPIOA
 #define USART2_EN_Pin GPIO_PIN_1
 #define USART2_EN_GPIO_Port GPIOA
 #define ID_08_Pin GPIO_PIN_4
@@ -77,10 +77,10 @@ void Error_Handler(void);
 #define USART1_EN_GPIO_Port GPIOA
 #define USART3_EN_Pin GPIO_PIN_15
 #define USART3_EN_GPIO_Port GPIOA
-#define LD5_Pin GPIO_PIN_6
-#define LD5_GPIO_Port GPIOB
-#define LD4_Pin GPIO_PIN_7
-#define LD4_GPIO_Port GPIOB
+#define LD4_485_RX_Pin GPIO_PIN_5
+#define LD4_485_RX_GPIO_Port GPIOB
+#define LD3_485_TX_Pin GPIO_PIN_6
+#define LD3_485_TX_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 /* Version */
