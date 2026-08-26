@@ -1,12 +1,16 @@
 [submodule "Component/cpp_DXL_Class_v2"]
 	path = Component/cpp_DXL_Class_v2
 	url = git@github.com:minimirror1/cpp_DXL_Class_v2.git
+	branch = master
 [submodule "Component/cpp_Uart_Class_v2"]
 	path = Component/cpp_Uart_Class_v2
 	url = git@github.com:minimirror1/cpp_Uart_Class_v2.git
+	branch = main
 [submodule "Component/cpp_tick"]
 	path = Component/cpp_tick
 	url = git@github.com:minimirror1/cpp_tick.git
+	branch = master
 [submodule "Component/GM_MOTION"]
 	path = Component/GM_MOTION
 	url = git@github.com:KimJunHyung1991/GM_MOTION.git
+	branch = sub_id
