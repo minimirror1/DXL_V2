@@ -59,7 +59,7 @@ void DxlTask(void *argument)
 	DXL_Manager_Init();
 	//DXL_motor dxl1(1, 2, Motor::Robotis_Type, &serial1);
 	//dxl1.init();
-	//dxlManager.initializeAll();
+	dxlManager.initializeAll();
 
 	/* Infinite loop */
 	for (;;) {
@@ -231,32 +231,32 @@ void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx) {
 void DXL_Manager_Init(void){
 	uint8_t gID = readGroupID();
 
-	for(int i = 1; i <= MAX_MOTOR_COUNT; i++)
+	for(int i = 1; i <= 10; i++)
 		dxlManager.addDXLObject(gID, i, Motor::Robotis_Type, &serial1);
-	// for(int i = 11; i <= 20; i++)
-	// 	dxlManager.addDXLObject(gID, i, Motor::Robotis_Type, &serial2);
-	// for(int i = 21; i <= 30; i++)
-	// 	dxlManager.addDXLObject(gID, i, Motor::Robotis_Type, &serial3);
+	for(int i = 11; i <= 20; i++)
+		dxlManager.addDXLObject(gID, i, Motor::Robotis_Type, &serial2);
+	for(int i = 21; i <= 30; i++)
+		dxlManager.addDXLObject(gID, i, Motor::Robotis_Type, &serial3);
 }
 
 void Serial_Init(void){
-	/* serial1 [uart2] 1~10 - 1바이트 DMA 모드 사용 */
-	serial1.init_DMA(&huart2, USART2_IRQn);  // 1바이트 DMA 모드
+	/* serial1 [uart2] 1~10 - IT 모드 사용 */
+	serial1.init(&huart2, USART2_IRQn);  // IT 모드
 	serial1.init_txLed(LD3_485_TX_GPIO_Port, LD3_485_TX_Pin, GPIO_PIN_RESET);
 	serial1.init_rxLed(LD4_485_RX_GPIO_Port, LD4_485_RX_Pin, GPIO_PIN_RESET);
 	serial1.init_rs485(USART2_EN_GPIO_Port, USART2_EN_Pin);
 
 	/* serial2 [uart3] 11~20 */
-	//serial2.init_DMA(&huart3, USART3_IRQn);  // 1바이트 DMA 모드
-	//serial2.init_txLed(LD3_485_TX_GPIO_Port, LD3_485_TX_Pin, GPIO_PIN_RESET);
-	//serial2.init_rxLed(LD4_485_RX_GPIO_Port, LD4_485_RX_Pin, GPIO_PIN_RESET);
-	//serial2.init_rs485(USART3_EN_GPIO_Port, USART3_EN_Pin);
+	serial2.init(&huart3, USART3_IRQn);  // IT 모드
+	serial2.init_txLed(LD3_485_TX_GPIO_Port, LD3_485_TX_Pin, GPIO_PIN_RESET);
+	serial2.init_rxLed(LD4_485_RX_GPIO_Port, LD4_485_RX_Pin, GPIO_PIN_RESET);
+	serial2.init_rs485(USART3_EN_GPIO_Port, USART3_EN_Pin);
 
 	/* serial3 [uart1] 21~30 */
-	//serial3.init_DMA(&huart1, USART1_IRQn);  // 1바이트 DMA 모드
-	//serial3.init_txLed(LD3_485_TX_GPIO_Port, LD3_485_TX_Pin, GPIO_PIN_RESET);
-	//serial3.init_rxLed(LD4_485_RX_GPIO_Port, LD4_485_RX_Pin, GPIO_PIN_RESET);
-	//serial3.init_rs485(USART1_EN_GPIO_Port, USART1_EN_Pin);
+	serial3.init(&huart1, USART1_IRQn);  // IT 모드
+	serial3.init_txLed(LD3_485_TX_GPIO_Port, LD3_485_TX_Pin, GPIO_PIN_RESET);
+	serial3.init_rxLed(LD4_485_RX_GPIO_Port, LD4_485_RX_Pin, GPIO_PIN_RESET);
+	serial3.init_rs485(USART1_EN_GPIO_Port, USART1_EN_Pin);
 }
 
 static uint8_t idRead(

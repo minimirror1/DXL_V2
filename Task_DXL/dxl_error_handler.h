@@ -17,7 +17,7 @@ extern "C" {
 #include <stdbool.h>
 
 /* 상수 정의 ------------------------------------------------------------------*/
-#define MAX_MOTOR_COUNT         10
+#define MAX_MOTOR_COUNT         30
 #define MAX_ERROR_BITS          8
 #define ERROR_SEND_LIMIT        3
 #define ERROR_CHECK_INTERVAL_MS 100
