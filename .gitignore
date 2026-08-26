@@ -32,6 +32,8 @@ Build/
 .metadata/
 .cproject
 .project
+# 디버그 설정은 ST-Link 시리얼 번호 등 개발자 PC에 종속된 값을 포함함
+*.launch
 
 # STM32CubeMX specific
 *.tmp
