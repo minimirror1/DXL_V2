@@ -52,7 +52,7 @@ git submodule update --init --recursive
 
 ## 2. 하드웨어 에러 코드
 
-`allHardwareErrorCheck()` 함수에서 사용되는 7글자 에러 코드 목록입니다.
+`DXL_ErrorHandler_CheckAll()` (`Task_DXL/dxl_error_handler.cpp`)에서 사용되는 7글자 에러 코드 목록입니다.
 
 각 모터의 하드웨어 에러 상태는 8비트 플래그로 전송되며, 비트별로 다음과 같은 에러 코드가 할당됩니다:
 
@@ -74,25 +74,26 @@ git submodule update --init --recursive
 
 ### 에러 감지 주기 (모터별 개별 관리)
 
-- **개별 타이머**: 각 모터별로 독립적인 타이머 관리 (`Tick t_rxLastRxMotion[11]`)
-- **모션 수신 기반**: `MRS_RX_MOTION` 수신 시 해당 모터의 타이머만 업데이트
-- **100ms 지연 후 체크**: 마지막 모션 수신 후 100ms 지나면 해당 모터의 하드웨어 에러 체크 시작
-- **100ms 간격 반복**: Status_Run 상태인 모터에 대해 100ms 간격으로 지속적으로 에러 체크
-- **효율적 처리**: 연결되지 않은 모터나 비활성 모터는 자동으로 건너뜀
+- **개별 타이머**: 각 모터별로 독립적인 타이머 관리 (`Tick t_rxLastRxMotion[MAX_MOTOR_COUNT + 1]`, 현재 `MAX_MOTOR_COUNT = 30`)
+- **타이머 갱신**: `MRS_RX_MOTION` 수신 시 `DXL_ErrorHandler_UpdateMotionTimer()`로 해당 모터의 타이머만 갱신
+- **100ms 간격 체크**: 타이머가 마지막으로 갱신된 후 100ms가 지나면 해당 모터를 체크하고 타이머를 다시 갱신
+- **체크 대상 조건**: `Status_Run` 상태인 모터만 실제로 에러를 읽음 (`isMotorReadyForErrorCheck()`)
 - 각 에러는 `MRS_TX_HARDWARE_ERROR_EVENT` 명령으로 상위 시스템에 전송
 - **중복 전송 방지**: 각 에러별로 최대 3번까지만 전송하여 CAN 네트워크 부하 감소
 - **자동 복구**: 에러가 해결되면 전송 카운터가 자동으로 리셋되어 재발 시 다시 전송
 
 #### 동작 예시
 ```
-모터 1: MRS_RX_MOTION 수신 → 100ms 후 에러 체크 시작 → 100ms 간격으로 반복
-모터 2: MRS_RX_MOTION 수신 → 100ms 후 에러 체크 시작 → 100ms 간격으로 반복
-모터 3: 모션 미수신 → 에러 체크 안함
-모터 4: MRS_RX_MOTION 수신 → 100ms 후 에러 체크 시작 → 100ms 간격으로 반복
+모터 1: Status_Run  → 100ms 간격으로 에러 체크
+모터 2: Status_Run  → 100ms 간격으로 에러 체크
+모터 3: Status_PreRun (초기 위치 동기화 미완료) → 에러 체크 안함
+모터 4: 미연결 (dxlObjects[4] == nullptr)       → 에러 체크 안함
 ...
 ```
 
-각 모터는 독립적으로 동작하므로 개별 모터의 모션 패턴에 관계없이 효율적인 에러 감지가 가능합니다.
+`DXL_ErrorHandler_Init()`이 모든 모터의 타이머를 한 번에 초기화하므로, 100ms 주기 자체는
+모션 수신 여부와 무관하게 전 모터에 대해 돌아갑니다. 실제로 에러를 읽을지 결정하는 것은
+`Status_Run` 조건이며, 모션 타이머는 모션을 받은 모터의 체크 시점을 뒤로 미루는 역할을 합니다.
 
 ### 통신 실패 안정성 강화
 
