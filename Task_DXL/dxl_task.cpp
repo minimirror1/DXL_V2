@@ -18,6 +18,7 @@
 /* User Task -----------------------------------------------------------------*/
 #include "dxl_task.h"
 #include "mrs_task.h"
+#include "dxl_error_handler.h"
 
 /* Component -----------------------------------------------------------------*/
 #include "UART_Class.h"
@@ -46,6 +47,9 @@ void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx);
 void DxlTask(void *argument)
 {
 	/* USER CODE BEGIN DxlTask */
+	// 에러 핸들러 초기화 (모터 타이머 및 카운터 초기화)
+	DXL_ErrorHandler_Init();
+
 	BypassPacket_TypeDef rx_bypass;
 	osDelay(1000);
 
@@ -55,7 +59,7 @@ void DxlTask(void *argument)
 	DXL_Manager_Init();
 	//DXL_motor dxl1(1, 2, Motor::Robotis_Type, &serial1);
 	//dxl1.init();
-	dxlManager.initializeAll();
+	//dxlManager.initializeAll();
 
 	/* Infinite loop */
 	for (;;) {
@@ -73,13 +77,14 @@ void DxlTask(void *argument)
 		dxlManager.allMotorProcess();
 
 		//dxlManager.allTimeCheckPosi();
+		DXL_ErrorHandler_CheckAll();
 
 		serial1.rxLed_Check();
 		serial2.rxLed_Check();
 		serial3.rxLed_Check();
 
 		if(t_Run.delay(500))
-			HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
+			HAL_GPIO_TogglePin(LD5_RUN_GPIO_Port, LD5_RUN_Pin);
 
 	}
 	/* USER CODE END DxlTask */
@@ -89,8 +94,8 @@ void DxlTask(void *argument)
 void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx) {
 
 	//240119 init error -> 응답 하지 않음
-	if(dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) == Motor::Status_InitError)
-		return;
+	//if(dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) == Motor::Status_InitError)
+	//	return;
 
 	switch (cmd_rx->cmd) {
 	case MRS_RX_DATA1: {
@@ -99,7 +104,24 @@ void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx) {
 		//if(dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) == Motor::Status_PreRun
 		//		||dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) == Motor::Status_SettingInfo){
 
-			dxlManager.setSettingInfo(
+			if(cmd_rx->sid > MAX_MOTOR_COUNT)
+				return;
+			
+			if(dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) != Motor::Status_PreRun){
+				dxlManager.initializeOne(cmd_rx->sid);
+				DXL_ErrorHandler_ResetCounters(cmd_rx->sid);
+			}
+		
+			if(dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) == Motor::Status_InitError){
+				BypassPacket_TypeDef msg = {0,};
+				msg.gid = cmd_rx->gid;
+				msg.sid = cmd_rx->sid;
+				msg.cmd = MRS_TX_HARDWARE_ERROR_EVENT;
+				strcpy((char*)msg.data, "InitErr");
+				osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+			}
+			else{
+				dxlManager.setSettingInfo(
 					cmd_rx->gid,
 					cmd_rx->sid,
 					(pData->direction == 0 ? DXL_ROT_CW : DXL_ROT_CCW),
@@ -108,13 +130,13 @@ void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx) {
 					0
 					);
 
-			BypassPacket_TypeDef msg;
-			msg.gid = cmd_rx->gid;
-			msg.sid = cmd_rx->sid;
-			msg.cmd = MRS_TX_DATA1_ACK;
-			memcpy(msg.data, (uint8_t *)pData, 8);
-			osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
-		//}
+				BypassPacket_TypeDef msg;
+				msg.gid = cmd_rx->gid;
+				msg.sid = cmd_rx->sid;
+				msg.cmd = MRS_TX_DATA1_ACK;
+				memcpy(msg.data, (uint8_t *)pData, 8);
+				osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+			}
 		break;
 	}
 
@@ -178,6 +200,9 @@ void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx) {
 	case MRS_RX_MOTION : {
 		prtc_data_ctl_motion_adc_t *pData = (prtc_data_ctl_motion_adc_t*) cmd_rx->data;
 		dxlManager.setPosition(cmd_rx->sid, pData->adc_val);
+
+		// 해당 모터의 모션 타이머 업데이트
+		DXL_ErrorHandler_UpdateMotionTimer(cmd_rx->sid);
 		break;
 	}
 	case MRS_RX_JOG_MOVE : {
@@ -206,32 +231,32 @@ void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx) {
 void DXL_Manager_Init(void){
 	uint8_t gID = readGroupID();
 
-	for(int i = 1; i <= 10; i++)
+	for(int i = 1; i <= MAX_MOTOR_COUNT; i++)
 		dxlManager.addDXLObject(gID, i, Motor::Robotis_Type, &serial1);
-	for(int i = 11; i <= 20; i++)
-		dxlManager.addDXLObject(gID, i, Motor::Robotis_Type, &serial2);
-	for(int i = 21; i <= 30; i++)
-		dxlManager.addDXLObject(gID, i, Motor::Robotis_Type, &serial3);
+	// for(int i = 11; i <= 20; i++)
+	// 	dxlManager.addDXLObject(gID, i, Motor::Robotis_Type, &serial2);
+	// for(int i = 21; i <= 30; i++)
+	// 	dxlManager.addDXLObject(gID, i, Motor::Robotis_Type, &serial3);
 }
 
 void Serial_Init(void){
-	/* serial1 [uart2] 1~10 */
-	serial1.init(&huart2, USART2_IRQn);
-	serial1.init_txLed(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
-	serial1.init_rxLed(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+	/* serial1 [uart2] 1~10 - 1바이트 DMA 모드 사용 */
+	serial1.init_DMA(&huart2, USART2_IRQn);  // 1바이트 DMA 모드
+	serial1.init_txLed(LD3_485_TX_GPIO_Port, LD3_485_TX_Pin, GPIO_PIN_RESET);
+	serial1.init_rxLed(LD4_485_RX_GPIO_Port, LD4_485_RX_Pin, GPIO_PIN_RESET);
 	serial1.init_rs485(USART2_EN_GPIO_Port, USART2_EN_Pin);
 
 	/* serial2 [uart3] 11~20 */
-	serial2.init(&huart3, USART3_IRQn);
-	serial2.init_txLed(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
-	serial2.init_rxLed(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
-	serial2.init_rs485(USART3_EN_GPIO_Port, USART3_EN_Pin);
+	//serial2.init_DMA(&huart3, USART3_IRQn);  // 1바이트 DMA 모드
+	//serial2.init_txLed(LD3_485_TX_GPIO_Port, LD3_485_TX_Pin, GPIO_PIN_RESET);
+	//serial2.init_rxLed(LD4_485_RX_GPIO_Port, LD4_485_RX_Pin, GPIO_PIN_RESET);
+	//serial2.init_rs485(USART3_EN_GPIO_Port, USART3_EN_Pin);
 
 	/* serial3 [uart1] 21~30 */
-	serial3.init(&huart1, USART1_IRQn);
-	serial3.init_txLed(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
-	serial3.init_rxLed(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
-	serial3.init_rs485(USART1_EN_GPIO_Port, USART1_EN_Pin);
+	//serial3.init_DMA(&huart1, USART1_IRQn);  // 1바이트 DMA 모드
+	//serial3.init_txLed(LD3_485_TX_GPIO_Port, LD3_485_TX_Pin, GPIO_PIN_RESET);
+	//serial3.init_rxLed(LD4_485_RX_GPIO_Port, LD4_485_RX_Pin, GPIO_PIN_RESET);
+	//serial3.init_rs485(USART1_EN_GPIO_Port, USART1_EN_Pin);
 }
 
 static uint8_t idRead(
@@ -266,7 +291,7 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
-	serial1.RxCpltCallback(huart);
+	serial1.RxCpltCallback(huart);  // IT, DMA 모드 공용
 	serial2.RxCpltCallback(huart);
 	serial3.RxCpltCallback(huart);
 }

@@ -1,0 +1,187 @@
+# STM32 Project .gitignore
+
+# Build outputs and intermediate files
+Debug/
+Release/
+Build/
+
+# Object files
+*.o
+*.obj
+*.ko
+*.elf
+*.eep
+*.lst
+*.map
+*.sym
+*.lss
+*.hex
+*.bin
+*.elf
+*.dis
+*.s19
+
+# Compilation dependency files
+*.d
+*.dep
+*.cyclo
+*.su
+
+# STM32CubeIDE specific
+.settings/
+.metadata/
+.cproject
+.project
+
+# STM32CubeMX specific
+*.tmp
+*.*~
+
+# Keil specific files
+*.uvgui*
+*.uvopt
+*.bak
+*.ddk
+*.edk
+*.lst
+*.lnp
+*.mpf
+*.mpj
+*.obj
+*.omf
+*.plg
+*.rpt
+*.tmp
+*.__i
+*.__o
+
+# IAR specific files
+Debug/
+Release/
+settings/
+*.dep
+*.ewd
+*.ewp
+*.eww
+*.icf
+*.map
+*.o
+*.pbi
+*.pbd
+*.pbi.cout
+*.pdi
+*.pdb
+*.wsdt
+
+# GCC specific
+*.a
+*.la
+*.lo
+*.so
+*.so.*
+*.dylib
+
+# Linker output
+*.ilk
+*.exp
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+
+# Package Files #
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+*.tgz
+*.war
+*.ear
+*.sar
+*.class
+
+# Logs and databases #
+*.log
+*.sql
+*.sqlite
+
+# OS generated files #
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Windows specific
+Desktop.ini
+
+# Linux specific
+*~
+
+# IDE specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.temp
+*.cache
+
+# Documentation generated files
+html/
+latex/
+
+# Unit test / coverage reports
+htmlcov/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.pytest_cache/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Backup files
+*~
+*.bak
+*.orig
+*.rej
+
+# Other common files
+*.old
+*.new
+*.copy

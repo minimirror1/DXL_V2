@@ -20,6 +20,7 @@
 /* MRS -----------------------------------------------------------------------*/
 #include "app_pid_motion_cmd.h"
 #include "app_pid_init_cmd.h"
+#include "app_pid_error_cmd.h"
 
 extern osMessageQueueId_t txQueueHandle;
 extern osMessageQueueId_t rxQueueHandle;
@@ -45,8 +46,8 @@ void MrsTask(void *argument)
 
 	/* MRS protocol */
 	can_init_data_save (&hcan1);
-	gm_motion_TX_LED_init(LD4_GPIO_Port, LD4_Pin, GPIO_PIN_RESET);
-	gm_motion_RX_LED_init(LD5_GPIO_Port, LD5_Pin, GPIO_PIN_RESET);
+	gm_motion_TX_LED_init(LD2_CAN_TX_GPIO_Port, LD2_CAN_TX_Pin, GPIO_PIN_RESET);
+	gm_motion_RX_LED_init(LD1_CAN_RX_GPIO_Port, LD1_CAN_RX_Pin, GPIO_PIN_RESET);
 	CAN_FilterConfig(&hcan1);
 
 	my_gid = idRead(
@@ -145,6 +146,18 @@ void mrs_tx_Bypass(BypassPacket_TypeDef *cmd_tx){
 			0,
 			MOVE_INIT_POSITION,
 			cmd_tx->data[0]);//status 1
+		break;
+	}
+	case MRS_TX_HARDWARE_ERROR_EVENT: {
+		app_tx_error_sub_pid_error_level_ctl(
+			0,						// num
+			0,						// priority
+			cmd_tx->gid,			// source_id
+			MASTER_CAN_ID,			// target_id
+			cmd_tx->sid,			// source_sub_id
+			0,						// target_sub_id
+			EL_MOTOR_DXL,			// motor_type
+			(char*)cmd_tx->data);	// err_str (4개 문자)
 		break;
 	}
 
