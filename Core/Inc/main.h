@@ -84,16 +84,17 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN Private defines */
 /* Version */
-// 0.0.1 : 231215 최초?��?��
-// 0.0.2 : 240116 버전?���? jog 기능 추�?
-// 0.0.3 : 240116 dxl ?��?�� ?��?�� 1Mbps �?�?
-// 0.0.4 : 240127 queue 최적?��
-// 0.0.5 : 반응?��?�� 증�? FreeRTOS ?��?��Queue 모두 비�?
-// 0.0.6 : ?��?���? 초기?���? ?��?�� ?��?��
+// 0.0.1 : 231215 최초?��?��
+// 0.0.2 : 240116 버전?���? jog 기능 추�?
+// 0.0.3 : 240116 dxl ?��?�� ?��?�� 1Mbps �?�?
+// 0.0.4 : 240127 queue 최적?��
+// 0.0.5 : 반응?��?�� 증�? FreeRTOS ?��?��Queue 모두 비�?
+// 0.0.6 : ?��?���? 초기?���? ?��?�� ?��?��
+// 0.0.7 : 260826 하드웨어 에러 감지 수정 (init() reboot 제거), USART IT 모드 복귀
 
 #define VERSION_MAJOR 0
 #define VERSION_MINOR 0
-#define VERSION_PATCH 6
+#define VERSION_PATCH 7
 
 /* Master CAN ID */
 #define MASTER_CAN_ID 0
