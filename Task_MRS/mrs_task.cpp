@@ -125,7 +125,11 @@ void mrs_tx_Bypass(BypassPacket_TypeDef *cmd_tx){
 		break;
 	}
 	case MRS_TX_DATA_OP_ACK : {
-		uint8_t data;
+		// 송신부는 pData 에서 8바이트를 그대로 복사해 간다.
+		// 이전에는 초기화되지 않은 1바이트 지역변수의 주소를 넘겨
+		// 스택 범위 밖 7바이트를 읽어 내보내고 있었다.
+		// dxl_task 가 응답 페이로드를 cmd_tx->data(8바이트)에 채워두므로 그것을 넘긴다.
+		// (정상 수신은 수신값 에코백, 미지원 case_num 은 case_num = 0xFFFF)
 		app_tx_init_sub_pid_driver_data_op_rsp(
 			0,
 			0,
@@ -133,7 +137,7 @@ void mrs_tx_Bypass(BypassPacket_TypeDef *cmd_tx){
 			MASTER_CAN_ID,
 			cmd_tx->sid,
 			0,
-			&data);
+			cmd_tx->data);
 		break;
 	}
 	case MRS_TX_MOVE_DEFAULT_POSI_CHECK: {

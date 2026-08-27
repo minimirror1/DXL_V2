@@ -141,34 +141,41 @@ void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx) {
 	}
 
 	case MRS_RX_DATA_OP : {
-		prtc_data_ctl_init_driver_data_op_dxl_t *pData = (prtc_data_ctl_init_driver_data_op_dxl_t*) cmd_rx->data;
+		prtc_data_ctl_init_driver_data_op_dxl2_t *pData = (prtc_data_ctl_init_driver_data_op_dxl2_t*) cmd_rx->data;
 
-		if(dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) == Motor::Status_SettingInfo
-			|| dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) == Motor::Status_SettingData_op){
+		if(cmd_rx->sid > MAX_MOTOR_COUNT)
+			return;
 
+		BypassPacket_TypeDef msg = {0,};
+		msg.gid = cmd_rx->gid;
+		msg.sid = cmd_rx->sid;
+		msg.cmd = MRS_TX_DATA_OP_ACK;
+
+		if(DXL_motor::isSupportedCase(pData->case_num) == false){
+			// 미지원 case_num : 설정을 반영하지 않고, case_num 자리에 거부 표시를 실어 응답한다.
+			// 나머지 슬롯은 0 으로 남긴다.
+			prtc_data_rsp_init_driver_data_op_dxl2_t *pRsp =
+					(prtc_data_rsp_init_driver_data_op_dxl2_t*) msg.data;
+			pRsp->case_num = DXL_MAP_CASE_REJECT;
+		}
+		else{
+			// 상위 재부팅이나 설정값 변경으로 언제든 재수신될 수 있으므로
+			// 이전 상태를 따지지 않고 항상 반영한다.
+			// (240119 에 추가되었던 "재전송시 응답만" 가드는 설정 변경이 반영되지 않아 제거함)
 			dxlManager.setSettingData_op(
 					cmd_rx->gid,
 					cmd_rx->sid,
-					pData->home_cnt,
-					0
+					pData->case_num,
+					pData->min,
+					pData->ref_position,
+					pData->max
 					);
 
-			BypassPacket_TypeDef msg;
-			msg.gid = cmd_rx->gid;
-			msg.sid = cmd_rx->sid;
-			msg.cmd = MRS_TX_DATA_OP_ACK;
+			// 상위가 반영 결과를 검증할 수 있도록 수신값을 그대로 되돌려준다.
 			memcpy(msg.data, (uint8_t *)pData, 8);
-			osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
 		}
-		//240119 재전송시 응답만
-		else if(dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) == Motor::Statis_SettingOk){
-			BypassPacket_TypeDef msg;
-			msg.gid = cmd_rx->gid;
-			msg.sid = cmd_rx->sid;
-			msg.cmd = MRS_TX_DATA_OP_ACK;
-			memcpy(msg.data, (uint8_t *)pData, 8);
-			osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
-		}
+
+		osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
 		break;
 	}
 	case MRS_RX_MOVE_DEFAULT_POSI: {
