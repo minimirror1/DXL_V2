@@ -91,10 +91,11 @@ void Error_Handler(void);
 // 0.0.5 : 반응속도 증가 FreeRTOS 수신Queue 모두 비움
 // 0.0.6 : 동작중 초기위치 이동 동작
 // 0.0.7 : 260826 하드웨어 에러 감지 수정 (init() reboot 제거), USART IT 모드 복귀
+// 0.0.8 : 260902 DXL2 DATA_OP 전환, SCALE_RAW, 동작중 주기 HW에러 READ 중단
 
 #define VERSION_MAJOR 0
 #define VERSION_MINOR 0
-#define VERSION_PATCH 7
+#define VERSION_PATCH 8
 
 /* Master CAN ID */
 #define MASTER_CAN_ID 0
