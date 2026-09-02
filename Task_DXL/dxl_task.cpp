@@ -107,12 +107,9 @@ void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx) {
 
 			if(cmd_rx->sid > MAX_MOTOR_COUNT)
 				return;
-			
-			if(dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) != Motor::Status_PreRun){
-				dxlManager.initializeOne(cmd_rx->sid);
-				DXL_ErrorHandler_ResetCounters(cmd_rx->sid);
-			}
-		
+
+			// init()은 부팅 initializeAll()에서만 수행한다. 재설정 DATA1에서
+			// initializeOne()을 다시 타면 동작 중 버스로 InitError가 나고 InitErr가 반복된다.
 			if(dxlManager.getStatus(cmd_rx->gid, cmd_rx->sid) == Motor::Status_InitError){
 				BypassPacket_TypeDef msg = {0,};
 				msg.gid = cmd_rx->gid;
