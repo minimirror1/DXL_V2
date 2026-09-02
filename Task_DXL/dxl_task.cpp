@@ -77,7 +77,8 @@ void DxlTask(void *argument)
 		dxlManager.allMotorProcess();
 
 		//dxlManager.allTimeCheckPosi();
-		DXL_ErrorHandler_CheckAll();
+		// Status_Run 중 주기적 Hardware Error READ는 HardFault 유발.
+		// 0.0.6과 같이 동작 중에는 호출하지 않는다.
 
 		serial1.rxLed_Check();
 		serial2.rxLed_Check();
@@ -207,9 +208,6 @@ void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx) {
 	case MRS_RX_MOTION : {
 		prtc_data_ctl_motion_adc_t *pData = (prtc_data_ctl_motion_adc_t*) cmd_rx->data;
 		dxlManager.setPosition(cmd_rx->sid, pData->adc_val);
-
-		// 해당 모터의 모션 타이머 업데이트
-		DXL_ErrorHandler_UpdateMotionTimer(cmd_rx->sid);
 		break;
 	}
 	case MRS_RX_JOG_MOVE : {
