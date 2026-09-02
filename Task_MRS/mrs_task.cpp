@@ -164,6 +164,19 @@ void mrs_tx_Bypass(BypassPacket_TypeDef *cmd_tx){
 			(char*)cmd_tx->data);	// err_str (4개 문자)
 		break;
 	}
+	case MRS_TX_SCALE_RAW_RSP: {
+		int64_t raw_data = 0;
+		memcpy(&raw_data, cmd_tx->data, sizeof(raw_data));
+		app_tx_motion_sub_pid_scale_raw_data_rsp(
+			0,
+			0,
+			cmd_tx->gid,
+			MASTER_CAN_ID,
+			cmd_tx->sid,
+			0,
+			raw_data);
+		break;
+	}
 
 	default :
 		break;
@@ -210,6 +223,18 @@ void app_rx_motion_sub_pid_direction_ctl(uint8_t num, prtc_header_t *pPh, prtc_d
 	osMessageQueuePut(rxQueueHandle, &bypassRx, 0U, 0U);
 }
 
+void app_rx_motion_sub_pid_scale_raw_data_rqt(uint8_t num, prtc_header_t *pPh, uint8_t *pData)
+{
+	(void)num;
+	(void)pData;
+
+	BypassPacket_TypeDef bypassRx = {0,};
+	bypassRx.gid = pPh->target_id;
+	bypassRx.sid = pPh->target_sub_id;
+	bypassRx.cmd = MRS_RX_SCALE_RAW_RQT;
+
+	osMessageQueuePut(rxQueueHandle, &bypassRx, 0U, 0U);
+}
 
 /* init sequnce */
 void app_rx_init_sub_pid_driver_data1_ctl(uint8_t num, prtc_header_t *pPh, prtc_data_ctl_init_driver_data1_t *pData)

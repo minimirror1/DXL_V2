@@ -221,6 +221,21 @@ void mrs_rx_bypass(BypassPacket_TypeDef *cmd_rx) {
 		break;
 	}
 
+	case MRS_RX_SCALE_RAW_RQT: {
+		BypassPacket_TypeDef msg = {0,};
+		msg.gid = cmd_rx->gid;
+		msg.sid = cmd_rx->sid;
+		msg.cmd = MRS_TX_SCALE_RAW_RSP;
+
+		int64_t raw = 0;
+		if(cmd_rx->sid <= MAX_MOTOR_COUNT)
+			raw = (int64_t)dxlManager.getRawCommandPosition(cmd_rx->sid);
+		memcpy(msg.data, &raw, sizeof(raw));
+
+		osMessageQueuePut(txQueueHandle, &msg, 0U, 0U);
+		break;
+	}
+
 
 
 

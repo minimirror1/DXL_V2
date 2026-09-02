@@ -21,7 +21,8 @@ typedef enum _TxBypassCmd_TypeDef{
 	MRS_TX_DATA_OP_ACK,
 	MRS_TX_MOVE_DEFAULT_POSI_ACK,
 	MRS_TX_MOVE_DEFAULT_POSI_CHECK,
-	MRS_TX_HARDWARE_ERROR_EVENT
+	MRS_TX_HARDWARE_ERROR_EVENT,
+	MRS_TX_SCALE_RAW_RSP
 }TxBypassCmd_TypeDef;
 
 typedef enum _RxBypassCmd_TypeDef{
@@ -31,7 +32,8 @@ typedef enum _RxBypassCmd_TypeDef{
 	MRS_RX_MOVE_DEFAULT_POSI,
 	MRS_RX_MOVE_DEFAULT_POSI_CHECK,
 	MRS_RX_MOTION,
-	MRS_RX_JOG_MOVE
+	MRS_RX_JOG_MOVE,
+	MRS_RX_SCALE_RAW_RQT
 }RxBypassCmd_TypeDef;
 
 typedef struct _BypassPacket_TypeDef{
