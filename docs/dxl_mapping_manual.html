@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>DXL2 초기화 매핑 매뉴얼 v0.0.8</title>
+<title>DXL2 초기화 매핑 매뉴얼 v0.0.9</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
@@ -218,9 +218,9 @@ button.on{background:var(--accent);color:var(--surface);border-color:var(--accen
 
 <main>
 <header class="top">
-  <div class="eyebrow">DXL_V2 · 펌웨어 v0.0.8 · Protocol 2.0</div>
+  <div class="eyebrow">DXL_V2 · 펌웨어 v0.0.9 · Protocol 2.0</div>
   <h1>DXL2 초기화 매핑 설정 매뉴얼</h1>
-  <p class="lead">상위(MRS)가 보내는 위치 명령 <code>0~4095</code>를 로보티즈 모터의 실제 엔코더 카운트로 바꾸는 규칙을 설명합니다. 설정 방법은 4가지(Case 1~4)이고, 모두 <code>cpp_DXL_Class_v2</code> v0.0.8(<code>8da94ec</code>) 코드를 기준으로 정리했습니다.</p>
+  <p class="lead">상위(MRS)가 보내는 위치 명령 <code>0~4095</code>를 로보티즈 모터의 실제 엔코더 카운트로 바꾸는 규칙을 설명합니다. 설정 방법은 4가지(Case 1~4)이고, 모두 <code>cpp_DXL_Class_v2</code> v0.0.9(<code>2f32710</code>) 코드를 기준으로 정리했습니다.</p>
 </header>
 
 <!-- 1 -->
@@ -440,7 +440,7 @@ p4095 = ref + dirSign × half</div>
 <!-- 6 -->
 <section id="rules">
   <h2>6. 코드 규칙</h2>
-  <p class="sec-sub">v0.0.8 코드에 정해진 동작 규칙입니다. 상위 개발이나 현장 세팅 때 이 규칙을 전제로 두면 됩니다. 표시 기준: <span class="chip on">규칙</span> 정해진 동작, <span class="chip" style="color:var(--warn);border-color:var(--warn)">주의</span> 실수하기 쉬운 점.</p>
+  <p class="sec-sub">v0.0.9 코드에 정해진 동작 규칙입니다. 상위 개발이나 현장 세팅 때 이 규칙을 전제로 두면 됩니다. 표시 기준: <span class="chip on">규칙</span> 정해진 동작, <span class="chip" style="color:var(--warn);border-color:var(--warn)">주의</span> 실수하기 쉬운 점.</p>
   <div class="rules">
     <div class="rule"><span class="tag">스케일</span><div><b>명령값은 항상 0~4095</b><p>범위를 벗어난 명령(uint16이라 4095 초과가 들어올 수 있음)은 0 또는 4095로 고정한 뒤 변환합니다.</p></div><span class="src">MRS_CMD_MAX · mrsToRaw() · setPosition()</span></div>
     <div class="rule"><span class="tag w">클램프</span><div><b>대응점은 raw 0~4095로 잘림</b><p>p0 / pMid / p4095를 계산한 뒤 모터 물리 범위로 자릅니다. 대응점이 범위 안이면 보간 결과도 항상 범위 안입니다. <b>클램프가 동작했다면 설정값이 모터 사양을 벗어났다는 뜻</b>이므로, 의도한 각도가 나오지 않습니다. 설정값을 다시 확인하세요.</p></div><span class="src">clampToPosiRange()</span></div>
@@ -449,7 +449,8 @@ p4095 = ref + dirSign × half</div>
     <div class="rule"><span class="tag">분할점</span><div><b>Case 3 경계는 2048 (앞 2048스텝, 뒤 2047스텝)</b><p>정확한 중앙은 2047.5지만 상위와 2048로 합의했습니다. 그래서 1스텝 비대칭입니다.</p></div><span class="src">MRS_CMD_MID</span></div>
     <div class="rule"><span class="tag">거부</span><div><b>지원하지 않는 case_num은 반영하지 않고 0xFFFF로 응답</b><p>1~4가 아니면 기존 설정을 유지합니다. DATA_OP_ACK의 case_num 자리에 <code>0xFFFF</code>를 싣고 나머지 6바이트는 0으로 보냅니다. 정상이면 받은 8바이트를 그대로 되돌려 주므로, 상위는 ACK를 보고 반영 여부를 검증할 수 있습니다.</p></div><span class="src">isSupportedCase() · DXL_MAP_CASE_REJECT</span></div>
     <div class="rule"><span class="tag">재설정</span><div><b>DATA_OP는 언제 받아도 항상 반영</b><p>이전 상태와 상관없이 매핑을 덮어쓰고, Run 중인 모터도 <code>Statis_SettingOk</code>로 되돌립니다. 새 매핑으로 움직이려면 <b>초기위치 이동(MOVE_DEFAULT_POSI)을 다시</b> 거쳐야 합니다.</p></div><span class="src">setSettingData_op()</span></div>
-    <div class="rule"><span class="tag w">순서</span><div><b>DATA_OP를 받기 전에는 위치 명령과 조그가 무시됨</b><p>매핑이 할당되어야(<code>f_assign</code>) 위치 명령을 받습니다. DATA1만 보내서는 움직이지 않습니다. 조그도 마찬가지입니다 (코드에 TODO로 재확인 표시가 있음).</p></div><span class="src">f_assign · setPosition() · setJogMove()</span></div>
+    <div class="rule"><span class="tag w">순서</span><div><b>DATA_OP를 받기 전에는 위치 명령이 무시됨</b><p>매핑이 할당되어야(<code>f_assign</code>) 위치 명령(MOTION)을 받습니다. DATA1만 보내서는 위치 명령으로 움직이지 않습니다.</p></div><span class="src">f_assign · setPosition()</span></div>
+    <div class="rule"><span class="tag">조그</span><div><b>조그는 init 성공 후라면 DATA_OP 전에도 동작 (v0.0.9)</b><p>조그는 매핑 없이 raw 카운트로 움직입니다. 허용 상태는 PreRun ~ SettingOk와 Run이고, None·Init·InitError와 <b>초기위치 이동 중(PosiSync_Ready/Move)</b>에는 무시합니다. 범위는 raw 0~4095이며 기구 구동 범위 제한은 없습니다. DATA_OP 이후 MOTION 명령이 오면 매핑 위치로 되돌아가므로 조그 중에는 MOTION을 보내지 마세요. 조그한 위치는 SCALE_RAW로 읽을 수 있습니다(명령 위치 기준).</p></div><span class="src">isJogAllowed() · setJogMove()</span></div>
     <div class="rule"><span class="tag">초기위치</span><div><b>init_position도 같은 매핑으로 변환</b><p>DATA1의 init_position은 명령값입니다. 동작 중 명령과 같은 <code>mrsToRaw()</code>로 raw로 바꾸므로, Case 3의 구간 분할도 그대로 적용됩니다.</p></div><span class="src">getDefaultPosi()</span></div>
     <div class="rule"><span class="tag">전송</span><div><b>같은 raw는 다시 보내지 않음, 응답도 기다리지 않음</b><p>변환한 raw가 직전 Goal Position과 같으면 버스에 쓰지 않습니다. 위치 쓰기는 응답 없이 전송(<code>write4ByteTxOnly</code>)합니다. Status Return Level이 1이기 때문입니다.</p></div><span class="src">setPosition()</span></div>
     <div class="rule"><span class="tag w">에러</span><div><b>init()에서 reboot 금지</b><p>reboot은 래치된 Hardware Error Status(주소 70)를 지워 버립니다. 그러면 에러를 영영 검출하지 못하므로 비활성화되어 있습니다. 다시 켜지 마세요.</p></div><span class="src">init() 주석 [사용 금지]</span></div>
